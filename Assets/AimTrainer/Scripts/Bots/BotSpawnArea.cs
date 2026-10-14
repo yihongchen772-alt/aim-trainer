@@ -4,7 +4,7 @@ namespace AimTrainer.Bots
 {
     /// <summary>
     /// 随机刷新区域：定点甩枪和移动靶模式会在这个长方体范围内随机找地面放假人。
-    /// 从长方体顶部向下找地面，并检查那里站得下一个人（不和墙、箱子重叠）。
+    /// 从长方体顶部向下找地面，并检查那里站得下一个人（不和墙、箱子重叠）。只在平地上刷新，不会刷在斜坡上。
     /// </summary>
     public sealed class BotSpawnArea : MonoBehaviour
     {
@@ -33,7 +33,7 @@ namespace AimTrainer.Bots
                 {
                     continue;
                 }
-                if (hit.normal.y < 0.8f) continue;
+                if (hit.normal.y < 0.99f) continue;
 
                 feet = hit.point;
                 Vector3 bottom = feet + Vector3.up * (BodyRadius + 0.05f);

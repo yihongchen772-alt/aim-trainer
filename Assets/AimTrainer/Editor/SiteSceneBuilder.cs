@@ -86,7 +86,7 @@ namespace AimTrainer.EditorTools
 
             SceneKit.Box(parent, "Generator_2.6", -22f, -18f, 10f, 13f, 2.6f, p.Block);
             SceneKit.Box(parent, "Boxes_1.4", -10f, -7f, 14f, 17f, 1.4f, p.Cover);
-            // 箱堆北半边再叠一层（总高 2.4 米），后面的探头假人才真正藏得住。
+            // 箱堆北半边再叠一层（总高 2.4 米），后面的探头假人从 A 大出口和连接方向都看不到。
             SceneKit.Box(parent, "Boxes_Top_1.0", -10f, -7f, 15.5f, 17f, 1f, p.Cover, 1.4f);
             SceneKit.Box(parent, "JumpBox_0.85", -27f, -25.5f, 3f, 4.5f, 0.85f, p.Cover);
             SceneKit.Box(parent, "PlantCover_1.0", -2f, 2f, 19f, 23f, 1f, p.Cover);
@@ -119,7 +119,7 @@ namespace AimTrainer.EditorTools
             // 包点区。
             SceneKit.Point(bots, "肘角", new Vector3(-18.8f, 0f, 3f), 20f, BotBehavior.Static);
             SceneKit.Point(bots, "发电机后探头", new Vector3(-20f, 0f, 14.6f), 200f, BotBehavior.Peek, new Vector3(-3.5f, 0f, 0f));
-            SceneKit.Point(bots, "箱子后探头", new Vector3(-8.5f, 0f, 18.4f), 180f, BotBehavior.Peek, new Vector3(2.6f, 0f, 0f));
+            SceneKit.Point(bots, "箱子后探头", new Vector3(-8.5f, 0f, 17.5f), 180f, BotBehavior.Peek, new Vector3(2.6f, 0f, 0f));
             SceneKit.Point(bots, "柱子后探头", new Vector3(-28f, 0f, 19.2f), 160f, BotBehavior.Peek, new Vector3(1.8f, 0f, 0f));
             SceneKit.Point(bots, "包点后角", new Vector3(-30.5f, 0f, 22.5f), 135f, BotBehavior.Static);
             SceneKit.Point(bots, "下包位", new Vector3(0f, 0f, 24.6f), 200f, BotBehavior.Static);

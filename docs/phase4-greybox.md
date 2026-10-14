@@ -59,7 +59,7 @@
 
 1. 打开一个生成好的场景（比如 A 点），**File → Save As**，存成新名字，例如 `Assets/AimTrainer/Scenes/MyMap.unity`。另存后再怎么改，都不会被“重新生成全部场景”覆盖。
 2. 删掉或修改 `Level` 下的几何体，用立方体或 ProBuilder 搭新地图。
-3. 移动 `PlayerSpawn` 物体到出生点（蓝色箭头是朝向）。
+3. 移动 `PlayerSpawn` 物体到出生点（蓝色箭头是朝向）。从 A 点另存的场景里还有一个 `AimModeSpawn` 物体（定点甩枪和移动靶的出生点），也要移到新地图里；不需要单独的出生点就删掉它，所有模式都会用 `PlayerSpawn`。
 4. 在 `Bots` 下增删 **Bot Spawn Point**（固定点位）和 **Bot Spawn Area**（随机刷新区域），方法见第三阶段文档。开始训练时会自动找到场景里所有的点位和区域，不需要手动登记。
 5. 加到菜单里：打开 `Assets/AimTrainer/Scripts/Game/SceneCatalog.cs`，在 `Training` 数组里加一行 `new Entry("MyMap", "我的地图", "说明")`；再在 **File → Build Profiles** 里把场景加入打包列表。
 

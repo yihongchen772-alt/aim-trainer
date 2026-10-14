@@ -87,7 +87,13 @@ namespace AimTrainer.UI
                 GUI.matrix = Matrix4x4.identity;
                 Vector2 center = (areaOrigin + scrollRect.position + previewCenter - scroll) * scale;
                 var clip = new Rect((areaOrigin + scrollRect.position) * scale, scrollRect.size * scale);
-                if (clip.Contains(center)) CrosshairDrawer.Draw(center, session.Settings);
+                if (clip.Contains(center))
+                {
+                    // 只画在可见的滚动区域内，滚动时准星不会盖到标题或底部按钮上。
+                    GUI.BeginClip(clip);
+                    CrosshairDrawer.Draw(center - clip.position, session.Settings);
+                    GUI.EndClip();
+                }
             }
 
             GUI.matrix = previous;
