@@ -3,7 +3,8 @@
   1. 从 SpikeAtlas 下载画面模型和碰撞模型（glb），从 valorant-api.com 下载官方小地图和地名；
   2. 把画面模型里的 WebP 贴图转成 JPG/PNG（Unity 的 glTF 导入器不支持 WebP），大于 1024 的贴图缩到 1024；
   3. 生成碰撞网格缓存（cache/ascent_col.npy），供 place.py 检查点位用。
-结果：Assets/AimTrainer/RealMaps/Ascent/ 下的 ascent-visual.glb、ascent-collision.glb、ascent-minimap.png。
+结果：Assets/AimTrainer/RealMaps/Ascent/ 下的 ascent-visual.gltf（+ .bin 和 ascent-visual_textures/ 里的贴图，
+单独的图片文件 Unity 才会压缩）、ascent-collision.glb、ascent-minimap.png。
 素材归 Riot Games 所有（按 Riot 的 Legal Jibber Jabber 政策，仅限免费、非商业使用）。
 用法：python3 tools/realmaps/fetch.py   （需要 numpy、Pillow）
 """
@@ -31,11 +32,12 @@ def main():
     for lang, name in (('en-US', 'maps_en.json'), ('zh-CN', 'maps_zh.json')):
         get(f'https://valorant-api.com/v1/maps?language={lang}', os.path.join(CACHE, name))
     subprocess.check_call([sys.executable, os.path.join(HERE, 'convert_webp.py'),
-                           os.path.join(CACHE, 'ascent-visual.webp.glb'), os.path.join(OUT, 'ascent-visual.glb')])
+                           os.path.join(CACHE, 'ascent-visual.webp.glb'), os.path.join(OUT, 'ascent-visual.gltf')])
     shutil.copyfile(os.path.join(CACHE, 'ascent-collision.glb'), os.path.join(OUT, 'ascent-collision.glb'))
     shutil.copyfile(os.path.join(CACHE, 'ascent-minimap.png'), os.path.join(OUT, 'ascent-minimap.png'))
-    # 渲染检查（render.js）用的画面模型
-    shutil.copyfile(os.path.join(OUT, 'ascent-visual.glb'), os.path.join(CACHE, 'ascent-visual.glb'))
+    # 渲染检查（render.js）用的画面模型（单个 glb 文件）
+    subprocess.check_call([sys.executable, os.path.join(HERE, 'convert_webp.py'),
+                           os.path.join(CACHE, 'ascent-visual.webp.glb'), os.path.join(CACHE, 'ascent-visual.glb')])
     sys.path.insert(0, HERE)
     import numpy as np
     from glbload import triangles

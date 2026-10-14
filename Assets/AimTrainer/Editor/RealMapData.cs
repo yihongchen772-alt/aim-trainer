@@ -11,7 +11,7 @@ namespace AimTrainer.EditorTools
         {
             Scene = SceneCatalog.AscentRealScene,
             Folder = "Assets/AimTrainer/RealMaps/Ascent",
-            Visual = "ascent-visual.glb",
+            Visual = "ascent-visual.gltf",
             Collision = "ascent-collision.glb",
             Minimap = "ascent-minimap.png",
             CollisionCenterXZ = new Vector2(14.499f, -33.076f),

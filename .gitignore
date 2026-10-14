@@ -32,5 +32,5 @@ __pycache__/
 
 # 真实地图工具的下载缓存和渲染检查用的 three.js
 tools/realmaps/cache/
-tools/realmaps/node_modules/
+tools/realmaps/node_modules
 tools/realmaps/package*.json

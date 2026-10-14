@@ -244,10 +244,14 @@ namespace AimTrainer.UI
                 for (int i = row; i < row + 3 && i < SceneCatalog.Training.Length; i++)
                 {
                     SceneCatalog.Entry entry = SceneCatalog.Training[i];
-                    if (Choice(entry.Title, entry.SceneName == activeScene, 154f) && entry.SceneName != activeScene)
+                    // 场景还没生成（例如真实地图的模型还没导入）时按钮变灰，点了也不会切换。
+                    bool available = entry.SceneName == activeScene || Application.CanStreamedLevelBeLoaded(entry.SceneName);
+                    GUI.enabled = available;
+                    if (Choice(entry.Title, entry.SceneName == activeScene, 154f) && entry.SceneName != activeScene && available)
                     {
                         session.LoadScene(entry.SceneName);
                     }
+                    GUI.enabled = true;
                 }
                 GUILayout.EndHorizontal();
             }
@@ -255,6 +259,9 @@ namespace AimTrainer.UI
             {
                 if (entry.SceneName == activeScene) GUILayout.Label(entry.Description, UiTheme.MutedText);
             }
+            // 每帧都画这一行（内容可能为空），布局在不同 IMGUI 事件之间保持一致。
+            GUILayout.Label(Application.CanStreamedLevelBeLoaded(SceneCatalog.AscentRealScene) ? string.Empty
+                : "灰色的地图还没生成：真实地图要等 glTFast 和地图模型导入完，然后点 AimTrainer → 生成缺少的场景。", UiTheme.MutedText);
 
             Section("武器");
             GUILayout.BeginHorizontal();

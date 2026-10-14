@@ -9,11 +9,12 @@ using UnityEngine.SceneManagement;
 namespace AimTrainer.EditorTools
 {
     /// <summary>
-    /// 用真实地图模型（glb，由 tools/realmaps/fetch.py 准备）生成训练场景：
+    /// 用真实地图模型（glTF / glb，由 tools/realmaps/fetch.py 准备）生成训练场景：
     /// 画面模型只负责显示，碰撞模型加上 MeshCollider 后隐藏，负责走路、子弹和视线判定；
     /// 再放上玩家、预瞄路线、架枪位置、官方地名和官方小地图。
     ///
-    /// glb 由 glTFast 包导入（Packages/manifest.json 里的 com.unity.cloud.gltfast）。
+    /// 模型由 glTFast 包导入（Packages/manifest.json 里的 com.unity.cloud.gltfast）。画面模型的贴图是单独的图片文件，
+    /// 由 Unity 的 TextureImporter 导入并压缩（嵌在 glb 里的贴图不会压缩，显存占用大好几倍）。
     /// glTF 是右手坐标系，导入 Unity 时会镜像一个轴；这里根据碰撞模型导入后的位置自动判断镜像的是 X 还是 Z，
     /// 训练数据（RealMapData，glTF 原始坐标）按同样的方式换算。
     /// </summary>

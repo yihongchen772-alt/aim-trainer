@@ -4,7 +4,7 @@
 
 | 文件 | 内容 | 来源 |
 |------|------|------|
-| `Assets/AimTrainer/RealMaps/Ascent/ascent-visual.glb` | 带贴图的画面模型（约 55 万三角面） | SpikeAtlas 公开的地图文件，贴图从 WebP 转成 JPG/PNG、最大 1024 |
+| `Assets/AimTrainer/RealMaps/Ascent/ascent-visual.gltf`（+ `.bin`、`ascent-visual_textures/`） | 带贴图的画面模型（约 55 万三角面） | SpikeAtlas 公开的地图文件，贴图从 WebP 转成 JPG/PNG、最大 1024，拆成单独的图片文件（Unity 会压缩它们，显存占用小得多） |
 | `Assets/AimTrainer/RealMaps/Ascent/ascent-collision.glb` | 简化的碰撞模型 | 同上 |
 | `Assets/AimTrainer/RealMaps/Ascent/ascent-minimap.png` | 官方小地图 | valorant-api.com |
 
@@ -12,8 +12,8 @@
 
 ## 第一次打开
 
-1. 打开项目时 Unity 会自动安装 **glTFast**（`Packages/manifest.json` 里的 `com.unity.cloud.gltfast`），然后导入两个 glb，第一次需要几分钟。
-2. 导入完成后会自动生成 `AscentReal` 场景。如果没有自动生成（例如 glTFast 还在安装），等导入结束后点 **AimTrainer → 生成缺少的场景**。
+1. 打开项目时 Unity 会自动安装 **glTFast**（`Packages/manifest.json` 里的 `com.unity.cloud.gltfast`），然后导入地图模型和 527 张贴图，第一次需要几分钟。
+2. 导入完成后会自动生成 `AscentReal` 场景。没生成之前，训练菜单里这张地图的按钮是灰的。如果没有自动生成（例如 glTFast 还在安装），等导入结束后点 **AimTrainer → 生成缺少的场景**。
 3. 在训练菜单的“地图”里选 **亚海悬城（真实地图）**。
 
 场景结构：
