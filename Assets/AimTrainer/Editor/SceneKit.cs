@@ -205,13 +205,14 @@ namespace AimTrainer.EditorTools
             UpdateBuildSettings();
         }
 
-        /// <summary>打包列表固定为：靶场（启动场景）、各张地图、移动测试。</summary>
+        /// <summary>打包列表固定为：靶场（启动场景）、各张地图（真实地图的场景只有在模型导入后才存在）、移动测试。</summary>
         public static void UpdateBuildSettings()
         {
             string[] order =
             {
-                SceneCatalog.RangeScene, SceneCatalog.SiteScene, SceneCatalog.AscentScene, SceneCatalog.AscentAScene,
-                SceneCatalog.BindBScene, SceneCatalog.HavenCScene, SceneCatalog.SplitAScene, SceneCatalog.MovementScene,
+                SceneCatalog.RangeScene, SceneCatalog.AscentRealScene, SceneCatalog.SiteScene, SceneCatalog.AscentScene,
+                SceneCatalog.AscentAScene, SceneCatalog.BindBScene, SceneCatalog.HavenCScene, SceneCatalog.SplitAScene,
+                SceneCatalog.MovementScene,
             };
             var ours = order.Select(ScenePath).ToArray();
             var scenes = order.Select(ScenePath).Where(File.Exists).Select(p => new EditorBuildSettingsScene(p, true)).ToList();

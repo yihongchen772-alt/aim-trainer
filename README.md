@@ -6,12 +6,13 @@
 - **射击**：射线判定，首发精准，连射上跳和左右摆动的固定弹道（可以练压枪），跑动、静步、急停后三档精度
 - **假人**：可以放在地图任意点位；爆头一枪死、身体 4 枪；看到你后经过反应时间开枪还击；四档难度
 - **五种训练模式**：定点甩枪、移动靶、对枪、预瞄清点（可选路线）、架枪（假人从入口冲出）；统计命中率、爆头率、平均击杀耗时，结算时按点位列出最慢、最容易被打死的角度
-- **地图**：靶场、一张原创 A 点、仿亚海悬城整图（A / 中路 / B 三路，24 个命名区域，3 条预瞄路线，3 个架枪位置），以及仿亚海悬城 A、源工重镇 B、隐世修所 C、霓虹町 A 的包点白模（近似布局）
+- **真实地图**：亚海悬城使用游戏里的地图模型和官方小地图，点位按真实地形放好（见 [docs/real-maps.md](docs/real-maps.md)）
+- **白模地图**：靶场、一张原创 A 点、仿亚海悬城整图（A / 中路 / B 三路，24 个命名区域，3 条预瞄路线，3 个架枪位置），以及仿亚海悬城 A、源工重镇 B、隐世修所 C、霓虹町 A 的包点白模（近似布局）
 - **小地图、键位、训练记录**：右上角小地图显示位置、朝向和所在区域；键位可以改；保存最近 30 局，一键继续上次训练
 - **武器**：Vandal、Phantom、Spectre、Sheriff、Ghost，射速、分段伤害和后坐力走势参考端游
 - **低延迟**：关闭垂直同步、不限帧率、CPU 最多领先 GPU 一帧，一键应用高帧率项目设置
 
-> 本项目与 Riot Games 无关，不包含任何官方素材。地图全部是原创白模，只参考常见的点位结构和尺寸比例。
+> 本项目与 Riot Games 无关，也未获其认可或赞助。“亚海悬城（真实地图）”使用的地图模型和小地图归 Riot Games 所有，按 Riot 的 “Legal Jibber Jabber” 政策仅做免费、非商业的练习用途；其他地图是原创白模。
 
 ## 快速开始
 
@@ -42,7 +43,7 @@
 | 4 | 白模地图 | ✅ 靶场 + A 点 + 仿端游包点和亚海悬城整图，待在 Unity 中验收 |
 | 5 | 帧率与延迟优化 | ✅ 运行时设置 + 项目设置工具，待实测 |
 
-代码在没有 Unity 编辑器的环境里开发：核心逻辑有 87 个单元测试（.NET 下运行），全部代码按 Unity 2021 的 API 编译检查通过，但还没有在 Unity 里实际运行过。遇到问题请看 [`docs/getting-started.md`](docs/getting-started.md) 最后的排查表。
+代码在没有 Unity 编辑器的环境里开发：核心逻辑有 89 个单元测试（.NET 下运行），全部代码按 Unity 2021 的 API 编译检查通过，但还没有在 Unity 里实际运行过。遇到问题请看 [`docs/getting-started.md`](docs/getting-started.md) 最后的排查表。
 
 ## 文档
 
@@ -54,6 +55,7 @@
 | [phase2-shooting.md](docs/phase2-shooting.md) | 射击：散布、后坐力、射速、伤害、换枪 |
 | [phase3-bots.md](docs/phase3-bots.md) | 假人：反击逻辑、难度、训练模式、放置点位 |
 | [phase4-greybox.md](docs/phase4-greybox.md) | 地图：尺寸标准、A 点布局、用 ProBuilder 搭图 |
+| [real-maps.md](docs/real-maps.md) | 真实地图：素材来源、场景结构、点位检查、修改点位 |
 | [phase5-performance.md](docs/phase5-performance.md) | 性能：延迟来源、自动设置、手动检查清单 |
 
 ## 目录
@@ -73,7 +75,8 @@ Assets/AimTrainer/
     Diagnostics/   调试面板
   Editor/          场景生成（靶场、A 点、移动测试）、项目设置工具
   Tests/EditMode/  单元测试
-Packages/          Unity 包清单（Input System、Test Framework）
+  RealMaps/        真实地图的模型和小地图（素材归 Riot Games 所有）
+Packages/          Unity 包清单（Input System、Test Framework、glTFast）
 ProjectSettings/   Unity 项目设置
 docs/              文档
 web-prototype/     最早的网页原型（单文件，浏览器直接打开）

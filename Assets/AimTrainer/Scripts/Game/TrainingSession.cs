@@ -40,6 +40,9 @@ namespace AimTrainer.Game
         const float HoldRespawnMax = 1.6f;
         const float RoundRestartDelay = 1.5f;
         const float MinSpawnDistance = 6f;
+
+        /// <summary>玩家掉到这个高度以下（掉出地图）时送回出生点。</summary>
+        const float FallResetHeight = -30f;
         const float MaxSpawnDistance = 40f;
 
         [SerializeField] PlayerController player;
@@ -195,7 +198,9 @@ namespace AimTrainer.Game
             spawnAreas = FindAllInScene<BotSpawnArea>();
             foreach (MapRegion region in FindAllInScene<MapRegion>())
             {
-                regions.Add(region.Label, region.Min.x, region.Max.x, region.Min.y, region.Max.y);
+                Vector3 p = region.transform.position;
+                if (region.IsPoint) regions.AddPoint(region.Label, p.x, p.z, region.Radius);
+                else regions.Add(region.Label, region.Min.x, region.Max.x, region.Min.y, region.Max.y);
             }
 
             if (player != null) player.ManageCursor = false;
@@ -445,6 +450,13 @@ namespace AimTrainer.Game
         void TickPlaying(float dt)
         {
             Elapsed += dt;
+
+            if (player != null && player.transform.position.y < FallResetHeight)
+            {
+                Transform spawn = CurrentSpawn();
+                if (spawn != null) player.Teleport(spawn.position, spawn.eulerAngles.y);
+                ShowMessage("掉出地图，已回到出生点", 2f);
+            }
 
             if (roundRestartAt >= 0f && Elapsed >= roundRestartAt)
             {

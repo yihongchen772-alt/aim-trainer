@@ -7,8 +7,8 @@ using UnityEngine;
 namespace AimTrainer.UI
 {
     /// <summary>
-    /// 右上角的小地图：俯视图（北在上）、玩家位置和朝向、正在看着你的假人（红点），下方显示当前区域名称。
-    /// 开始时根据场景里的碰撞体自动画出俯视图，不需要额外的贴图资源：
+    /// 右上角的小地图：俯视图、玩家位置和朝向、正在看着你的假人（红点），下方显示当前区域名称。
+    /// 场景里有 MinimapImage（例如真实地图的官方小地图）时用那张图；否则开始时根据场景里的碰撞体自动画出俯视图（北在上）：
     /// 墙最深，高台和斜坡偏蓝，箱子和掩体浅一些。
     /// </summary>
     public sealed class Minimap : MonoBehaviour
@@ -25,12 +25,13 @@ namespace AimTrainer.UI
         [SerializeField] TrainingSession session;
 
         Texture2D mapTexture;
+        bool ownsMapTexture;
         Texture2D arrowTexture;
         Texture2D dotTexture;
-        float worldXMin;
-        float worldZMin;
-        float worldWidth;
-        float worldDepth;
+
+        // 世界坐标 (x, z) → 图片坐标 (u 向右, v 向下)：u = U.x·x + U.y·z + U.z。
+        Vector3 uFromWorld;
+        Vector3 vFromWorld;
         GUIStyle regionStyle;
         string regionText = string.Empty;
         float lastRegionUpdate = -1f;
@@ -40,14 +41,25 @@ namespace AimTrainer.UI
         void Start()
         {
             if (session == null) session = GetComponent<TrainingSession>();
-            BuildTexture();
+            MinimapImage image = FindImage();
+            if (image != null && image.Image != null)
+            {
+                mapTexture = image.Image;
+                uFromWorld = image.UFromWorld;
+                vFromWorld = image.VFromWorld;
+            }
+            else
+            {
+                BuildTexture();
+                ownsMapTexture = true;
+            }
             arrowTexture = CreateArrow(32);
             dotTexture = CreateDot(16);
         }
 
         void OnDestroy()
         {
-            if (mapTexture != null) Destroy(mapTexture);
+            if (mapTexture != null && ownsMapTexture) Destroy(mapTexture);
             if (arrowTexture != null) Destroy(arrowTexture);
             if (dotTexture != null) Destroy(dotTexture);
         }
@@ -66,7 +78,7 @@ namespace AimTrainer.UI
             var frame = new Rect(Screen.width - box - margin, margin, box, box);
 
             // 按比例缩放到正方形框里，较短的一边居中。
-            float aspect = worldWidth / worldDepth;
+            float aspect = (float)mapTexture.width / mapTexture.height;
             Rect map = aspect >= 1f
                 ? new Rect(frame.x, frame.y + (box - box / aspect) * 0.5f, box, box / aspect)
                 : new Rect(frame.x + (box - box * aspect) * 0.5f, frame.y, box * aspect, box);
@@ -83,11 +95,17 @@ namespace AimTrainer.UI
                 GUI.DrawTexture(new Rect(p.x - dotSize * 0.5f, p.y - dotSize * 0.5f, dotSize, dotSize), dotTexture);
             }
 
-            // 玩家：箭头指向视线方向（yaw 0 = 北 = 上）。
+            // 玩家：箭头指向视线方向（按换算关系把朝向转成图上的方向，官方小地图不一定是北在上）。
             Vector2 center = ToMap(map, player.transform.position);
             float arrow = 16f * scale;
+            float yawRad = player.Yaw * Mathf.Deg2Rad;
+            float fx = Mathf.Sin(yawRad);
+            float fz = Mathf.Cos(yawRad);
+            float du = uFromWorld.x * fx + uFromWorld.y * fz;
+            float dv = vFromWorld.x * fx + vFromWorld.y * fz;
+            float screenAngle = Mathf.Atan2(du, -dv) * Mathf.Rad2Deg;
             Matrix4x4 previous = GUI.matrix;
-            GUIUtility.RotateAroundPivot(player.Yaw, center);
+            GUIUtility.RotateAroundPivot(screenAngle, center);
             GUI.color = new Color(0.35f, 0.95f, 1f);
             GUI.DrawTexture(new Rect(center.x - arrow * 0.5f, center.y - arrow * 0.5f, arrow, arrow), arrowTexture);
             GUI.matrix = previous;
@@ -111,9 +129,19 @@ namespace AimTrainer.UI
 
         Vector2 ToMap(Rect map, Vector3 world)
         {
-            float u = Mathf.Clamp01((world.x - worldXMin) / worldWidth);
-            float v = Mathf.Clamp01((world.z - worldZMin) / worldDepth);
-            return new Vector2(map.x + u * map.width, map.y + (1f - v) * map.height);
+            float u = Mathf.Clamp01(uFromWorld.x * world.x + uFromWorld.y * world.z + uFromWorld.z);
+            float v = Mathf.Clamp01(vFromWorld.x * world.x + vFromWorld.y * world.z + vFromWorld.z);
+            return new Vector2(map.x + u * map.width, map.y + v * map.height);
+        }
+
+        MinimapImage FindImage()
+        {
+            foreach (GameObject root in gameObject.scene.GetRootGameObjects())
+            {
+                var image = root.GetComponentInChildren<MinimapImage>(true);
+                if (image != null) return image;
+            }
+            return null;
         }
 
         // ---------- 俯视图 ----------
@@ -158,10 +186,13 @@ namespace AimTrainer.UI
                 foreach (Footprint f in footprints) extent.Encapsulate(f.Bounds);
             }
 
-            worldXMin = extent.min.x;
-            worldZMin = extent.min.z;
-            worldWidth = Mathf.Max(1f, extent.size.x);
-            worldDepth = Mathf.Max(1f, extent.size.z);
+            float worldXMin = extent.min.x;
+            float worldZMin = extent.min.z;
+            float worldWidth = Mathf.Max(1f, extent.size.x);
+            float worldDepth = Mathf.Max(1f, extent.size.z);
+            // 北在上：u = (x - xMin) / 宽，v = 1 - (z - zMin) / 深。
+            uFromWorld = new Vector3(1f / worldWidth, 0f, -worldXMin / worldWidth);
+            vFromWorld = new Vector3(0f, -1f / worldDepth, 1f + worldZMin / worldDepth);
             float pixelsPerMeter = Mathf.Min(4f, MaxTextureSize / Mathf.Max(worldWidth, worldDepth));
             int width = Mathf.Max(8, Mathf.CeilToInt(worldWidth * pixelsPerMeter));
             int height = Mathf.Max(8, Mathf.CeilToInt(worldDepth * pixelsPerMeter));

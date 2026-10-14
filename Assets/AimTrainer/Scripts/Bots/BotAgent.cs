@@ -27,6 +27,9 @@ namespace AimTrainer.Bots
         /// <summary>冲出（Swing）时的移动速度：和玩家跑步一样快。</summary>
         const float SwingSpeed = 5.4f;
 
+        /// <summary>移动时能直接走上 / 走下的高度差（米）。更高的台阶或更深的落差当作边缘，不会走过去。</summary>
+        const float StepHeight = 0.45f;
+
         enum PeekPhase
         {
             Hidden,
@@ -278,7 +281,7 @@ namespace AimTrainer.Bots
 
             Vector3 next = transform.position + strafeAxis * (strafeDirection * skill.moveSpeed * dt);
             float offset = Vector3.Dot(next - anchor, strafeAxis);
-            if (Mathf.Abs(offset) > strafeHalfWidth || IsBlocked(next) || !HasGround(next))
+            if (Mathf.Abs(offset) > strafeHalfWidth || !SnapToGround(ref next) || IsBlocked(next))
             {
                 strafeDirection = -strafeDirection;
                 return;
@@ -315,17 +318,26 @@ namespace AimTrainer.Bots
             }
         }
 
+        /// <summary>
+        /// 水平方向朝目标走一步，高度贴着地面（能上下台阶和斜坡）。走不过去（被挡住、前面是边缘）或已经到达时返回 true。
+        /// </summary>
         bool MoveTowards(Vector3 destination, float dt, float speed)
         {
-            Vector3 next = Vector3.MoveTowards(transform.position, destination, speed * dt);
-            if (IsBlocked(next) || !HasGround(next)) return true;
+            Vector3 position = transform.position;
+            var flat = new Vector2(destination.x - position.x, destination.z - position.z);
+            float distance = flat.magnitude;
+            if (distance < 0.01f) return true;
+            float step = Mathf.Min(distance, speed * dt);
+            Vector3 next = position + new Vector3(flat.x, 0f, flat.y) * (step / distance);
+            if (!SnapToGround(ref next) || IsBlocked(next)) return true;
             transform.position = next;
-            return (next - destination).sqrMagnitude < 1e-4f;
+            return step >= distance;
         }
 
         bool IsBlocked(Vector3 feet)
         {
-            Vector3 bottom = feet + Vector3.up * (BodyRadius + 0.1f);
+            // 胶囊底部离地 0.3 米：低台阶和斜坡不会算成挡住。
+            Vector3 bottom = feet + Vector3.up * (BodyRadius + 0.3f);
             Vector3 top = feet + Vector3.up * (1.8f - BodyRadius);
             int count = Physics.OverlapCapsuleNonAlloc(bottom, top, BodyRadius, overlapBuffer,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
@@ -336,16 +348,24 @@ namespace AimTrainer.Bots
             return false;
         }
 
-        /// <summary>脚下 0.3 米内有没有地面（刷新在箱子顶或高台上的假人不会横跳到半空中）。</summary>
-        bool HasGround(Vector3 feet)
+        /// <summary>
+        /// 找脚下的地面并把 feet.y 改成地面高度：只认上下 StepHeight 以内的地面。
+        /// 找不到（前面是箱子边缘、高台边缘或太高的台阶）时返回 false，假人不会走到半空中。
+        /// </summary>
+        bool SnapToGround(ref Vector3 feet)
         {
-            int count = Physics.RaycastNonAlloc(feet + Vector3.up * 0.5f, Vector3.down, rayBuffer, 0.8f,
+            Vector3 origin = feet + Vector3.up * (StepHeight + 0.05f);
+            int count = Physics.RaycastNonAlloc(origin, Vector3.down, rayBuffer, StepHeight * 2f + 0.05f,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            float nearest = float.MaxValue;
             for (int i = 0; i < count; i++)
             {
-                if (!rayBuffer[i].collider.transform.IsChildOf(transform)) return true;
+                if (rayBuffer[i].collider.transform.IsChildOf(transform)) continue;
+                nearest = Mathf.Min(nearest, rayBuffer[i].distance);
             }
-            return false;
+            if (nearest == float.MaxValue) return false;
+            feet.y = origin.y - nearest;
+            return true;
         }
 
         void UpdateFacing(float dt)

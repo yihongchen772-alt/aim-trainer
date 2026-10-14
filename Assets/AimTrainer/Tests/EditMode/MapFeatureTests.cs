@@ -29,6 +29,27 @@ namespace AimTrainer.Tests
         }
 
         [Test]
+        public void Points_ReturnNearestWithinRadius()
+        {
+            var lookup = new RegionLookup();
+            lookup.AddPoint("A区 大道", 0f, 0f, 20f);
+            lookup.AddPoint("A区 部署区", 10f, 0f, 20f);
+            Assert.That(lookup.Find(2f, 1f), Is.EqualTo("A区 大道"));
+            Assert.That(lookup.Find(8f, -1f), Is.EqualTo("A区 部署区"));
+            Assert.That(lookup.Find(100f, 0f), Is.Empty, "超出半径");
+        }
+
+        [Test]
+        public void Rectangles_TakePriorityOverPoints()
+        {
+            var lookup = new RegionLookup();
+            lookup.AddPoint("地名", 0f, 0f, 50f);
+            lookup.Add("矩形", -1f, 1f, -1f, 1f);
+            Assert.That(lookup.Find(0f, 0f), Is.EqualTo("矩形"));
+            Assert.That(lookup.Find(5f, 5f), Is.EqualTo("地名"));
+        }
+
+        [Test]
         public void Add_AcceptsSwappedCorners()
         {
             var lookup = new RegionLookup();

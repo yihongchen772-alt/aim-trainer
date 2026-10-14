@@ -14,17 +14,24 @@ namespace AimTrainer.EditorTools
     {
         const string Menu = "AimTrainer/";
 
-        /// <summary>全部由代码生成的场景及其生成方法、中文名。</summary>
-        static readonly (string Scene, string Title, System.Action Build)[] Scenes =
+        /// <summary>全部由代码生成的场景及其生成方法、中文名。生成方法返回是否真的生成了（真实地图在模型没导入时会跳过）。</summary>
+        static readonly (string Scene, string Title, System.Func<bool> Build)[] Scenes =
         {
-            (SceneCatalog.RangeScene, "靶场", RangeSceneBuilder.Build),
-            (SceneCatalog.SiteScene, "A 点（原创）", SiteSceneBuilder.Build),
-            (SceneCatalog.AscentScene, "亚海悬城（整图）", ValorantMapBuilders.BuildAscent),
-            (SceneCatalog.AscentAScene, "亚海悬城 A", ValorantMapBuilders.BuildAscentA),
-            (SceneCatalog.BindBScene, "源工重镇 B", ValorantMapBuilders.BuildBindB),
-            (SceneCatalog.HavenCScene, "隐世修所 C", ValorantMapBuilders.BuildHavenC),
-            (SceneCatalog.SplitAScene, "霓虹町 A", ValorantMapBuilders.BuildSplitA),
-            (SceneCatalog.MovementScene, "移动测试", MovementTestSceneBuilder.Build),
+            (SceneCatalog.RangeScene, "靶场", Always(RangeSceneBuilder.Build)),
+            (SceneCatalog.AscentRealScene, "亚海悬城（真实地图）", RealMapBuilder.BuildAscentReal),
+            (SceneCatalog.SiteScene, "A 点（原创）", Always(SiteSceneBuilder.Build)),
+            (SceneCatalog.AscentScene, "亚海悬城（整图）", Always(ValorantMapBuilders.BuildAscent)),
+            (SceneCatalog.AscentAScene, "亚海悬城 A", Always(ValorantMapBuilders.BuildAscentA)),
+            (SceneCatalog.BindBScene, "源工重镇 B", Always(ValorantMapBuilders.BuildBindB)),
+            (SceneCatalog.HavenCScene, "隐世修所 C", Always(ValorantMapBuilders.BuildHavenC)),
+            (SceneCatalog.SplitAScene, "霓虹町 A", Always(ValorantMapBuilders.BuildSplitA)),
+            (SceneCatalog.MovementScene, "移动测试", Always(MovementTestSceneBuilder.Build)),
+        };
+
+        static System.Func<bool> Always(System.Action build) => () =>
+        {
+            build();
+            return true;
         };
 
         public static int SceneCount => Scenes.Length;
@@ -90,8 +97,7 @@ namespace AimTrainer.EditorTools
             foreach (var entry in Scenes)
             {
                 if (File.Exists(SceneKit.ScenePath(entry.Scene))) continue;
-                entry.Build();
-                built++;
+                if (entry.Build()) built++;
             }
             if (built == 0) return 0;
             AssetDatabase.SaveAssets();
@@ -105,6 +111,9 @@ namespace AimTrainer.EditorTools
 
         [MenuItem(Menu + "打开场景/A 点（原创）", false, 21)]
         static void OpenSite() => OpenFromMenu(SceneCatalog.SiteScene);
+
+        [MenuItem(Menu + "打开场景/亚海悬城（真实地图）", false, 21)]
+        static void OpenAscentReal() => OpenFromMenu(SceneCatalog.AscentRealScene);
 
         [MenuItem(Menu + "打开场景/亚海悬城（整图）", false, 22)]
         static void OpenAscentFull() => OpenFromMenu(SceneCatalog.AscentScene);

@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+</head><body style="margin:0;background:#000">
+<canvas id="c" width="960" height="540"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9fb4c8);
+scene.add(new THREE.AmbientLight(0xffffff, 2.2));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(30, 60, 20); scene.add(sun);
+const camera = new THREE.PerspectiveCamera(70.5, 960 / 540, 0.05, 2000); // 水平 103°
+const markers = new THREE.Group(); scene.add(markers);
+window.loadMap = (url) => new Promise((res, rej) => new GLTFLoader().load(url, g => { scene.add(g.scene); res(true); }, undefined, e => rej(String(e))));
+window.render = (view) => {
+  markers.clear();
+  for (const m of view.markers || []) {
+    const color = m.color || 0xff2020;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 1.45, 10), new THREE.MeshBasicMaterial({ color }));
+    body.position.set(m.p[0], m.p[1] + 0.72, m.p[2]); markers.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd0a0 }));
+    head.position.set(m.p[0], m.p[1] + 1.6, m.p[2]); markers.add(head);
+  }
+  if (view.ortho) {
+    // 正交俯视：只保留 y < cut 的东西（near 面切掉屋顶），x 向右、-z 向上。
+    const [xa, xb, za, zb] = view.ortho, cut = view.cut;
+    const oc = new THREE.OrthographicCamera(xa, xb, -za, -zb, 0.01, cut + 50);
+    oc.position.set(0, cut, 0); oc.up.set(0, 0, -1); oc.lookAt(0, -100, 0);
+    renderer.setSize(view.w, view.h, false);
+    renderer.render(scene, oc);
+    const url = canvas.toDataURL('image/jpeg', 0.9);
+    renderer.setSize(960, 540, false);
+    return url;
+  }
+  if (view.top) {
+    camera.fov = view.fov || 60; camera.position.set(view.eye[0], view.eye[1], view.eye[2]);
+    camera.up.set(0, 0, -1); camera.lookAt(view.eye[0], 0, view.eye[2]);
+  } else {
+    camera.fov = 70.5; camera.up.set(0, 1, 0);
+    camera.position.set(view.eye[0], view.eye[1] + 1.6, view.eye[2]);
+    camera.lookAt(view.at[0], view.at[1] + 1.6, view.at[2]);
+  }
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+  return canvas.toDataURL('image/jpeg', 0.85);
+};
+window.ready = true;
+</script></body></html>
