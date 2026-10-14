@@ -7,7 +7,7 @@ using UnityEngine;
 namespace AimTrainer.Bots
 {
     /// <summary>
-    /// 假人：站桩 / 横跳 / 探头，可以开枪反击。
+    /// 假人：站桩 / 横跳 / 探头 / 冲出，可以开枪反击。
     ///
     /// 反击流程：
     /// 1. 每 0.05 秒检查一次玩家是否在正前方的视野圆锥内、距离够近、中间没有墙挡着。
@@ -23,6 +23,9 @@ namespace AimTrainer.Bots
         const float PerceptionInterval = 0.05f;
         public const float EyeHeight = 1.6f;
         const float BodyRadius = 0.3f;
+
+        /// <summary>冲出（Swing）时的移动速度：和玩家跑步一样快。</summary>
+        const float SwingSpeed = 5.4f;
 
         enum PeekPhase
         {
@@ -74,6 +77,12 @@ namespace AimTrainer.Bots
 
         public Health Health => health;
         public bool IsDead => health != null && health.IsDead;
+
+        /// <summary>所在点位的名称（随机刷新的假人为“随机位置”），用于按点位统计。</summary>
+        public string Label { get; private set; } = "随机位置";
+
+        /// <summary>当前能不能看到玩家（小地图用它决定是否显示这个假人）。</summary>
+        public bool CanSeePlayer => canSeePlayer && !IsDead;
 
         /// <summary>生成的时间（Time.time）。</summary>
         public float SpawnTime { get; private set; }
@@ -131,12 +140,13 @@ namespace AimTrainer.Bots
                 strafeHalfWidth = spawnPoint.StrafeWidth * 0.5f;
                 peekTarget = spawnPoint.PeekPosition;
                 peekTarget.y = anchor.y;
+                Label = spawnPoint.Label;
             }
 
             strafeDirection = rng.NextDouble() < 0.5 ? -1f : 1f;
             decisionTimer = RandomRange(0.2f, 0.7f);
             peekPhase = PeekPhase.Hidden;
-            holdTimer = RandomRange(0.4f, 1.6f);
+            holdTimer = behavior == BotBehavior.Swing ? RandomRange(0.3f, 1.5f) : RandomRange(0.4f, 1.6f);
             perceptionTimer = RandomRange(0f, PerceptionInterval);
             SpawnTime = Time.time;
         }
@@ -232,6 +242,24 @@ namespace AimTrainer.Bots
                 case BotBehavior.Peek:
                     UpdatePeek(dt);
                     break;
+                case BotBehavior.Swing:
+                    UpdateSwing(dt);
+                    break;
+            }
+        }
+
+        /// <summary>冲出：等待 → 全速冲到终点 → 停在终点。冲出途中发现玩家会停下来（和急停开枪一样），反应时间到了就开枪。</summary>
+        void UpdateSwing(float dt)
+        {
+            switch (peekPhase)
+            {
+                case PeekPhase.Hidden:
+                    holdTimer -= dt;
+                    if (holdTimer <= 0f) peekPhase = PeekPhase.MovingOut;
+                    break;
+                case PeekPhase.MovingOut:
+                    if (MoveTowards(peekTarget, dt, SwingSpeed)) peekPhase = PeekPhase.Exposed;
+                    break;
             }
         }
 
@@ -267,7 +295,7 @@ namespace AimTrainer.Bots
                     if (holdTimer <= 0f) peekPhase = PeekPhase.MovingOut;
                     break;
                 case PeekPhase.MovingOut:
-                    if (MoveTowards(peekTarget, dt))
+                    if (MoveTowards(peekTarget, dt, skill.moveSpeed))
                     {
                         peekPhase = PeekPhase.Exposed;
                         holdTimer = RandomRange(0.8f, 2.2f);
@@ -278,7 +306,7 @@ namespace AimTrainer.Bots
                     if (holdTimer <= 0f && !canSeePlayer) peekPhase = PeekPhase.MovingIn;
                     break;
                 case PeekPhase.MovingIn:
-                    if (MoveTowards(anchor, dt))
+                    if (MoveTowards(anchor, dt, skill.moveSpeed))
                     {
                         peekPhase = PeekPhase.Hidden;
                         holdTimer = RandomRange(0.6f, 2f);
@@ -287,9 +315,9 @@ namespace AimTrainer.Bots
             }
         }
 
-        bool MoveTowards(Vector3 destination, float dt)
+        bool MoveTowards(Vector3 destination, float dt, float speed)
         {
-            Vector3 next = Vector3.MoveTowards(transform.position, destination, skill.moveSpeed * dt);
+            Vector3 next = Vector3.MoveTowards(transform.position, destination, speed * dt);
             if (IsBlocked(next) || !HasGround(next)) return true;
             transform.position = next;
             return (next - destination).sqrMagnitude < 1e-4f;

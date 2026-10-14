@@ -3,6 +3,7 @@
     "rootNamespace": "AimTrainer.Tests",
     "references": [
         "AimTrainer.Runtime",
+        "Unity.InputSystem",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

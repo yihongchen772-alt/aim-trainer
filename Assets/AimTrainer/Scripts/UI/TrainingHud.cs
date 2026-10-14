@@ -32,6 +32,8 @@ namespace AimTrainer.UI
         {
             if (session == null) session = GetComponent<TrainingSession>();
             if (session != null && session.Weapon != null) session.Weapon.ShotFired += OnShot;
+            // 小地图是后来加的：以前生成的场景里没有这个组件，运行时补上。
+            if (session != null && GetComponent<Minimap>() == null) gameObject.AddComponent<Minimap>().Bind(session);
         }
 
         void OnDestroy()
@@ -90,6 +92,11 @@ namespace AimTrainer.UI
                 {
                     line += $"\n剩余假人 {session.AliveBots}   本轮 {session.RoundTime:0.00} s";
                     if (s.RoundsCleared > 0) line += $"   最快 {s.BestRoundTime:0.00} s";
+                    if (session.ActiveRoute != null) line += $"   路线：{session.ActiveRoute.Label}";
+                }
+                else if (session.ActiveHold != null)
+                {
+                    line += $"\n架枪：{session.ActiveHold.Label}";
                 }
                 statsLine = line;
             }

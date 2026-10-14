@@ -12,11 +12,14 @@ namespace AimTrainer.Bots
 
         /// <summary>从掩体后探头，停一会儿再缩回去。</summary>
         Peek,
+
+        /// <summary>等一会儿后从掩体后全速冲出（Swing）到探头终点，然后停在那里对枪。架枪训练用。</summary>
+        Swing,
     }
 
     /// <summary>
     /// 假人点位：拖到地图里任意位置即可。蓝色箭头是假人面朝的方向，
-    /// 探头点位的橙线是探出去的终点，横跳点位的绿线是横跳范围。
+    /// 探头和冲出点位的橙线是探出去的终点，横跳点位的绿线是横跳范围。
     /// 物体的位置就是假人脚底，Y 轴旋转就是朝向。
     /// </summary>
     public sealed class BotSpawnPoint : MonoBehaviour
@@ -68,7 +71,7 @@ namespace AimTrainer.Bots
             Gizmos.color = new Color(0.3f, 0.6f, 1f);
             Gizmos.DrawLine(feet + Vector3.up * 1.6f, feet + Vector3.up * 1.6f + transform.forward * 1.5f);
 
-            if (behavior == BotBehavior.Peek)
+            if (behavior == BotBehavior.Peek || behavior == BotBehavior.Swing)
             {
                 Gizmos.color = new Color(1f, 0.6f, 0.1f);
                 Gizmos.DrawLine(feet + Vector3.up * 0.05f, PeekPosition + Vector3.up * 0.05f);

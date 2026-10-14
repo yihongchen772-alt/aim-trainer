@@ -19,6 +19,7 @@ namespace AimTrainer.EditorTools
         {
             (SceneCatalog.RangeScene, "靶场", RangeSceneBuilder.Build),
             (SceneCatalog.SiteScene, "A 点（原创）", SiteSceneBuilder.Build),
+            (SceneCatalog.AscentScene, "亚海悬城（整图）", ValorantMapBuilders.BuildAscent),
             (SceneCatalog.AscentAScene, "亚海悬城 A", ValorantMapBuilders.BuildAscentA),
             (SceneCatalog.BindBScene, "源工重镇 B", ValorantMapBuilders.BuildBindB),
             (SceneCatalog.HavenCScene, "隐世修所 C", ValorantMapBuilders.BuildHavenC),
@@ -104,6 +105,9 @@ namespace AimTrainer.EditorTools
 
         [MenuItem(Menu + "打开场景/A 点（原创）", false, 21)]
         static void OpenSite() => OpenFromMenu(SceneCatalog.SiteScene);
+
+        [MenuItem(Menu + "打开场景/亚海悬城（整图）", false, 22)]
+        static void OpenAscentFull() => OpenFromMenu(SceneCatalog.AscentScene);
 
         [MenuItem(Menu + "打开场景/亚海悬城 A", false, 22)]
         static void OpenAscent() => OpenFromMenu(SceneCatalog.AscentAScene);

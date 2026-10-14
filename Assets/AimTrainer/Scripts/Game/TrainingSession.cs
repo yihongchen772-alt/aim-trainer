@@ -17,8 +17,10 @@ namespace AimTrainer.Game
     ///
     /// 假人来源：
     /// - BotSpawnArea（随机刷新区域）：定点甩枪、移动靶模式在这里随机找你看得见的位置。
-    /// - BotSpawnPoint（固定点位）：对枪模式随机挑点位，预瞄模式同时用上所有标记了“预瞄”的点位。
-    /// 某种来源不存在时会退而使用另一种。开始时自动收集场景里所有的点位和区域。
+    /// - BotSpawnPoint（固定点位）：对枪模式随机挑点位，预瞄模式同时用上所有标记了“预瞄”的点位
+    ///   （选了 PrefireRoute 路线时只用路线上的点位，并从路线起点出发）。
+    /// - HoldSpot（架枪位置）下面的入口点位：只在架枪模式使用，假人从入口冲出来。
+    /// 某种来源不存在时会退而使用另一种。开始时自动收集场景里所有的点位、区域、路线和架枪位置。
     /// </summary>
     [DefaultExecutionOrder(-40)]
     public sealed class TrainingSession : MonoBehaviour
@@ -34,6 +36,8 @@ namespace AimTrainer.Game
         const float FlickRespawnDelay = 0.25f;
         const float StrafeRespawnDelay = 0.35f;
         const float DuelRespawnDelay = 1f;
+        const float HoldRespawnMin = 0.5f;
+        const float HoldRespawnMax = 1.6f;
         const float RoundRestartDelay = 1.5f;
         const float MinSpawnDistance = 6f;
         const float MaxSpawnDistance = 40f;
@@ -52,6 +56,13 @@ namespace AimTrainer.Game
         // 开始时自动收集场景里所有的点位和刷新区域，新加的点位不需要手动登记。
         BotSpawnPoint[] spawnPoints = new BotSpawnPoint[0];
         BotSpawnArea[] spawnAreas = new BotSpawnArea[0];
+        PrefireRoute[] routes = new PrefireRoute[0];
+        HoldSpot[] holds = new HoldSpot[0];
+        readonly RegionLookup regions = new RegionLookup();
+        readonly AngleStats angleStats = new AngleStats();
+
+        /// <summary>“继续上次训练”切换场景后，新场景加载完自动开始。</summary>
+        static bool autoStartPending;
 
         readonly List<BotAgent> bots = new List<BotAgent>();
         readonly List<float> respawnQueue = new List<float>();
@@ -80,6 +91,30 @@ namespace AimTrainer.Game
         /// <summary>本局实际使用的时长（秒），0 表示不限时。</summary>
         public int ActiveDuration { get; private set; }
         public SessionStats Stats => stats;
+
+        /// <summary>本局按点位（角度）的统计，预瞄、架枪和对枪模式有效。</summary>
+        public AngleStats Angles => angleStats;
+
+        /// <summary>场景里的预瞄路线（可能为空数组）。</summary>
+        public IReadOnlyList<PrefireRoute> Routes => routes;
+
+        /// <summary>场景里的架枪位置（可能为空数组）。</summary>
+        public IReadOnlyList<HoldSpot> Holds => holds;
+
+        /// <summary>当前在场的假人（包括正在倒下的）。</summary>
+        public IReadOnlyList<BotAgent> Bots => bots;
+
+        /// <summary>本局使用的预瞄路线，没有选或地图上没有路线时为 null。</summary>
+        public PrefireRoute ActiveRoute { get; private set; }
+
+        /// <summary>本局使用的架枪位置，不是架枪模式或地图上没有架枪位置时为 null。</summary>
+        public HoldSpot ActiveHold { get; private set; }
+
+        /// <summary>本局的路线或架枪位置名称，没有时为空。</summary>
+        public string ActiveVariant => ActiveHold != null ? ActiveHold.Label : ActiveRoute != null ? ActiveRoute.Label : string.Empty;
+
+        /// <summary>菜单正在等待按键（改键位）时为 true，这期间 Esc 不会暂停或继续。</summary>
+        public static bool SuppressEscape { get; set; }
         public GameSettings Settings => GameSettings.Current;
         public PlayerController Player => player;
         public HitscanWeapon Weapon => weapon;
@@ -120,6 +155,12 @@ namespace AimTrainer.Game
             }
         }
 
+        /// <summary>位置所在的地图区域名称（例如“A 大道”），地图没有划分区域时为空。</summary>
+        public string RegionAt(Vector3 position) => regions.Find(position.x, position.z);
+
+        /// <summary>下一个加载的训练场景在加载完成后自动开始一局（“继续上次训练”用）。</summary>
+        public static void RequestAutoStart() => autoStartPending = true;
+
         /// <summary>设置定点甩枪和移动靶模式专用的出生点（可选）。</summary>
         public void SetAimSpawn(Transform spawn) => aimSpawn = spawn;
 
@@ -142,8 +183,20 @@ namespace AimTrainer.Game
             if (weapon == null && player != null) weapon = player.GetComponentInChildren<HitscanWeapon>();
             if (playerHealth == null && player != null) playerHealth = player.GetComponent<Health>();
             if (playerAudio == null && player != null) playerAudio = player.GetComponent<PlayerAudio>();
-            spawnPoints = FindAllInScene<BotSpawnPoint>();
+            holds = FindAllInScene<HoldSpot>();
+            routes = FindAllInScene<PrefireRoute>();
+            // 架枪位置下面的入口点位只在架枪模式使用，不参与对枪和预瞄。
+            var freePoints = new List<BotSpawnPoint>();
+            foreach (BotSpawnPoint point in FindAllInScene<BotSpawnPoint>())
+            {
+                if (point.GetComponentInParent<HoldSpot>() == null) freePoints.Add(point);
+            }
+            spawnPoints = freePoints.ToArray();
             spawnAreas = FindAllInScene<BotSpawnArea>();
+            foreach (MapRegion region in FindAllInScene<MapRegion>())
+            {
+                regions.Add(region.Label, region.Min.x, region.Max.x, region.Min.y, region.Max.y);
+            }
 
             if (player != null) player.ManageCursor = false;
             if (weapon != null) weapon.ShotFired += OnShotFired;
@@ -161,6 +214,11 @@ namespace AimTrainer.Game
             Transform spawn = CurrentSpawn();
             if (player != null && spawn != null) player.Teleport(spawn.position, spawn.eulerAngles.y);
             EnterMenu();
+            if (autoStartPending)
+            {
+                autoStartPending = false;
+                StartSession();
+            }
         }
 
         void OnApplicationQuit() => Settings.Save();
@@ -188,7 +246,7 @@ namespace AimTrainer.Game
             if (debugHud != null && debugHud.Visible != Settings.showDebugPanel) Settings.showDebugPanel = debugHud.Visible;
 
             Keyboard keyboard = Keyboard.current;
-            bool escape = keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
+            bool escape = keyboard != null && keyboard.escapeKey.wasPressedThisFrame && !SuppressEscape;
             if (CurrentPhase == Phase.Playing)
             {
                 // 按 Esc，或者鼠标因为别的原因被释放（编辑器里按 Esc 会直接释放鼠标）时暂停。
@@ -219,6 +277,7 @@ namespace AimTrainer.Game
             LockActiveOptions();
             ApplySettings();
             stats.Reset();
+            angleStats.Reset();
             Elapsed = 0f;
             NewRecord = false;
             PreviousBest = BestRecords.Get(RecordKey());
@@ -249,8 +308,29 @@ namespace AimTrainer.Game
             string key = RecordKey();
             PreviousBest = BestRecords.Get(key);
             NewRecord = BestRecords.Submit(key, stats, roundBased);
+            if (stats.Shots > 0 || stats.Kills > 0 || stats.Deaths > 0) SessionHistory.Add(CreateHistoryEntry());
             SetPhase(Phase.Results);
         }
+
+        HistoryEntry CreateHistoryEntry() => new HistoryEntry
+        {
+            time = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture),
+            scene = SceneManager.GetActiveScene().name,
+            mode = ActiveMode,
+            difficulty = activeDifficulty,
+            botCount = activeBotCount,
+            duration = ActiveDuration,
+            weapon = activeWeaponId,
+            variant = ActiveVariant,
+            score = stats.Score,
+            kills = stats.Kills,
+            deaths = stats.Deaths,
+            accuracy = stats.Accuracy,
+            headshotRate = stats.HeadshotRate,
+            bestRoundTime = stats.BestRoundTime,
+            averageKillTime = stats.AverageKillTime,
+            seconds = Elapsed,
+        };
 
         /// <summary>开始新的一局时，把菜单里的训练选项锁定为本局使用的选项。</summary>
         void LockActiveOptions()
@@ -261,11 +341,38 @@ namespace AimTrainer.Game
             ActiveDuration = Settings.durationSeconds;
             activeWeaponId = Settings.weaponId;
             if (weapon != null) weapon.SetStats(WeaponPresets.Create(activeWeaponId));
+            ActiveRoute = ActiveMode == TrainingMode.Prefire ? FindRoute(Settings.prefireRoute) : null;
+            ActiveHold = ActiveMode == TrainingMode.Hold ? FindHold(Settings.holdSpot) : null;
         }
 
-        /// <summary>定点甩枪和移动靶用专用出生点（如果有），其他模式用正常出生点。</summary>
+        /// <summary>按名称找路线；名称为空或地图上没有这条路线时返回 null（使用所有预瞄点位）。</summary>
+        public PrefireRoute FindRoute(string label)
+        {
+            if (string.IsNullOrEmpty(label)) return null;
+            foreach (PrefireRoute route in routes)
+            {
+                if (route != null && route.Label == label) return route;
+            }
+            return null;
+        }
+
+        /// <summary>按名称找架枪位置；找不到时用地图上的第一个，地图上没有架枪位置时返回 null。</summary>
+        public HoldSpot FindHold(string label)
+        {
+            foreach (HoldSpot hold in holds)
+            {
+                if (hold != null && hold.Label == label) return hold;
+            }
+            return holds.Length > 0 ? holds[0] : null;
+        }
+
+        /// <summary>
+        /// 出生点：架枪模式在架枪位置，预瞄选了路线时在路线起点，定点甩枪和移动靶用专用出生点（如果有），其他用正常出生点。
+        /// </summary>
         Transform CurrentSpawn()
         {
+            if (ActiveHold != null) return ActiveHold.transform;
+            if (ActiveRoute != null) return ActiveRoute.transform;
             bool aimMode = ActiveMode == TrainingMode.Flick || ActiveMode == TrainingMode.Strafe;
             return aimMode && aimSpawn != null ? aimSpawn : playerSpawn;
         }
@@ -298,6 +405,7 @@ namespace AimTrainer.Game
         public void ApplySettings()
         {
             GameSettings s = Settings;
+            PlayerInputReader.Bindings = s.keys;
             if (player != null)
             {
                 player.Sensitivity = s.sensitivity;
@@ -370,17 +478,36 @@ namespace AimTrainer.Game
             if (ActiveMode == TrainingMode.Prefire)
             {
                 int spawned = 0;
-                foreach (BotSpawnPoint point in spawnPoints)
+                if (ActiveRoute != null)
                 {
-                    if (point == null || !point.UsedInPrefire) continue;
-                    SpawnAtPoint(point, point.CanShoot);
-                    spawned++;
+                    foreach (BotSpawnPoint point in ActiveRoute.Points)
+                    {
+                        if (point == null || occupiedPoints.ContainsValue(point)) continue;
+                        SpawnAtPoint(point, point.CanShoot);
+                        spawned++;
+                    }
+                }
+                else
+                {
+                    foreach (BotSpawnPoint point in spawnPoints)
+                    {
+                        if (point == null || !point.UsedInPrefire) continue;
+                        SpawnAtPoint(point, point.CanShoot);
+                        spawned++;
+                    }
                 }
                 if (spawned > 0) return;
                 ShowMessage("这张地图没有预瞄点位，改为随机刷新。", 3f);
             }
+            else if (ActiveMode == TrainingMode.Hold && ActiveHold == null)
+            {
+                ShowMessage("这张地图没有架枪位置，改为对枪。架枪训练请选“亚海悬城（整图）”。", 4f);
+            }
 
-            for (int i = 0; i < activeBotCount; i++) SpawnOne();
+            int count = activeBotCount;
+            // 架枪时同时冲出来的假人不超过入口数量。
+            if (ActiveHold != null) count = Mathf.Clamp(count, 1, Mathf.Max(1, ActiveHold.Entries.Length));
+            for (int i = 0; i < count; i++) SpawnOne();
         }
 
         // ---------- 刷新假人 ----------
@@ -394,6 +521,11 @@ namespace AimTrainer.Game
                     break;
                 case TrainingMode.Strafe:
                     if (!SpawnInView(BotBehavior.Strafe, false)) RetrySpawnLater();
+                    break;
+                case TrainingMode.Hold when ActiveHold != null:
+                    BotSpawnPoint entry = PickFreeHoldEntry();
+                    if (entry != null) SpawnAtPoint(entry, true);
+                    else RetrySpawnLater();
                     break;
                 default:
                     BotSpawnPoint point = PickFreePoint();
@@ -418,6 +550,17 @@ namespace AimTrainer.Game
                 if (player != null && Vector3.Distance(point.transform.position, player.transform.position) < MinSpawnDistance)
                     continue;
                 candidates.Add(point);
+            }
+            return candidates.Count == 0 ? null : candidates[rng.Next(candidates.Count)];
+        }
+
+        /// <summary>架枪模式：随机挑一个没有假人的入口。</summary>
+        BotSpawnPoint PickFreeHoldEntry()
+        {
+            var candidates = new List<BotSpawnPoint>();
+            foreach (BotSpawnPoint entry in ActiveHold.Entries)
+            {
+                if (entry != null && !occupiedPoints.ContainsValue(entry)) candidates.Add(entry);
             }
             return candidates.Count == 0 ? null : candidates[rng.Next(candidates.Count)];
         }
@@ -561,13 +704,14 @@ namespace AimTrainer.Game
         void OnBotKilled(BotAgent bot, DamageResult result)
         {
             if (CurrentPhase != Phase.Playing) return;
-            bool lineOfSightMode = ActiveMode == TrainingMode.Duel || ActiveMode == TrainingMode.Prefire;
+            bool lineOfSightMode = TrainingModeInfo.BotsShoot(ActiveMode);
             // 对枪和预瞄从假人第一次看到你开始计时；假人没看到你就被击杀时不计入平均耗时（记为 -1）。
             float timeToKill = lineOfSightMode
                 ? (bot.FirstSeenPlayerTime >= 0f ? Time.time - bot.FirstSeenPlayerTime : -1f)
                 : Time.time - bot.SpawnTime;
             bool oneTap = result.Zone == HitZone.Head && result.Dealt >= bot.Health.Max - 0.01f;
             stats.RecordKill(timeToKill, oneTap);
+            if (TrainingModeInfo.TracksAngles(ActiveMode)) angleStats.RecordKill(bot.Label, timeToKill);
             occupiedPoints.Remove(bot);
 
             switch (ActiveMode)
@@ -580,6 +724,12 @@ namespace AimTrainer.Game
                     break;
                 case TrainingMode.Duel:
                     respawnQueue.Add(Elapsed + DuelRespawnDelay);
+                    break;
+                case TrainingMode.Hold:
+                    float delay = ActiveHold != null
+                        ? HoldRespawnMin + (float)rng.NextDouble() * (HoldRespawnMax - HoldRespawnMin)
+                        : DuelRespawnDelay;
+                    respawnQueue.Add(Elapsed + delay);
                     break;
                 case TrainingMode.Prefire:
                     if (AliveBots == 0 && !roundOver) FinishRound(cleared: true);
@@ -603,6 +753,11 @@ namespace AimTrainer.Game
         {
             if (CurrentPhase != Phase.Playing) return;
             stats.RecordDeath();
+            if (TrainingModeInfo.TracksAngles(ActiveMode) && info.Source != null)
+            {
+                BotAgent killer = info.Source.GetComponent<BotAgent>();
+                if (killer != null) angleStats.RecordDeath(killer.Label);
+            }
             FinishRound(cleared: false);
         }
 
@@ -632,8 +787,13 @@ namespace AimTrainer.Game
             messageUntil = Time.unscaledTime + seconds;
         }
 
-        string RecordKey() => BestRecords.Key(SceneManager.GetActiveScene().name, ActiveMode, activeDifficulty,
-            activeBotCount, ActiveDuration) + "." + activeWeaponId;
+        string RecordKey()
+        {
+            string key = BestRecords.Key(SceneManager.GetActiveScene().name, ActiveMode, activeDifficulty, activeBotCount,
+                ActiveDuration) + "." + activeWeaponId;
+            // 不同路线 / 架枪位置分开记录（不选路线时和以前的记录保持一致）。
+            return string.IsNullOrEmpty(ActiveVariant) ? key : key + "." + ActiveVariant;
+        }
 
         T FindInScene<T>() where T : Component
         {

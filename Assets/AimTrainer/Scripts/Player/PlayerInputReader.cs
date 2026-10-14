@@ -6,10 +6,10 @@ namespace AimTrainer.Player
     /// <summary>一帧的玩家输入。</summary>
     public struct InputFrame
     {
-        /// <summary>前后输入，W 为 +1，S 为 −1，同时按下为 0。</summary>
+        /// <summary>前后输入，前进键为 +1，后退键为 −1，同时按下为 0。</summary>
         public float Forward;
 
-        /// <summary>左右输入，D 为 +1，A 为 −1，同时按下为 0。</summary>
+        /// <summary>左右输入，右移键为 +1，左移键为 −1，同时按下为 0。</summary>
         public float Right;
 
         public bool Walk;
@@ -24,22 +24,26 @@ namespace AimTrainer.Player
 
     /// <summary>
     /// 直接轮询 Input System 的键盘和鼠标设备。
-    /// 不经过 Input Action 资源，按键写死为端游默认键位，延迟最低、配置最少。
+    /// 不经过 Input Action 资源，延迟最低、配置最少。键位来自 Bindings（训练菜单里可以改，默认是端游键位）。
     /// </summary>
     public static class PlayerInputReader
     {
+        /// <summary>当前键位。训练系统应用设置时会替换成玩家保存的键位。</summary>
+        public static KeyBindings Bindings { get; set; } = new KeyBindings();
+
         public static InputFrame Read(bool scrollWheelJump)
         {
+            KeyBindings keys = Bindings ?? new KeyBindings();
             var frame = new InputFrame();
 
             Keyboard keyboard = Keyboard.current;
             if (keyboard != null)
             {
-                frame.Forward = Axis(keyboard.wKey.isPressed, keyboard.sKey.isPressed);
-                frame.Right = Axis(keyboard.dKey.isPressed, keyboard.aKey.isPressed);
-                frame.Walk = keyboard.leftShiftKey.isPressed;
-                frame.Crouch = keyboard.leftCtrlKey.isPressed || keyboard.cKey.isPressed;
-                frame.JumpPressed = keyboard.spaceKey.wasPressedThisFrame;
+                frame.Forward = Axis(KeyBindings.IsDown(keyboard, keys.forward), KeyBindings.IsDown(keyboard, keys.back));
+                frame.Right = Axis(KeyBindings.IsDown(keyboard, keys.right), KeyBindings.IsDown(keyboard, keys.left));
+                frame.Walk = KeyBindings.IsDown(keyboard, keys.walk);
+                frame.Crouch = KeyBindings.IsDown(keyboard, keys.crouch) || KeyBindings.IsDown(keyboard, keys.crouchAlt);
+                frame.JumpPressed = KeyBindings.WasPressed(keyboard, keys.jump);
                 frame.EscapePressed = keyboard.escapeKey.wasPressedThisFrame;
             }
 

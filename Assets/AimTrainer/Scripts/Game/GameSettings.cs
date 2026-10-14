@@ -38,6 +38,12 @@ namespace AimTrainer.Game
 
         public bool showDebugPanel;
 
+        [Tooltip("训练时在右上角显示小地图。")]
+        public bool showMinimap = true;
+
+        [Header("键位")]
+        public Player.KeyBindings keys = new Player.KeyBindings();
+
         [Header("训练选项")]
         public TrainingMode mode = TrainingMode.Flick;
         public BotDifficulty difficulty = BotDifficulty.Normal;
@@ -48,6 +54,12 @@ namespace AimTrainer.Game
 
         [Tooltip("使用的枪，见 WeaponPresets（vandal / phantom / spectre / sheriff / ghost）。")]
         public string weaponId = Weapons.WeaponPresets.Vandal;
+
+        [Tooltip("预瞄模式使用的路线名称，空字符串表示使用地图上所有预瞄点位。地图上没有同名路线时也使用所有点位。")]
+        public string prefireRoute = string.Empty;
+
+        [Tooltip("架枪模式使用的位置名称，空字符串表示地图上的第一个位置。")]
+        public string holdSpot = string.Empty;
 
         /// <summary>当前设置（第一次访问时从本机读取）。</summary>
         public static GameSettings Current => current ??= Load();
@@ -89,6 +101,10 @@ namespace AimTrainer.Game
             if (!Enum.IsDefined(typeof(TrainingMode), mode)) mode = TrainingMode.Flick;
             if (!Enum.IsDefined(typeof(BotDifficulty), difficulty)) difficulty = BotDifficulty.Normal;
             if (!Weapons.WeaponPresets.IsKnown(weaponId)) weaponId = Weapons.WeaponPresets.Vandal;
+            prefireRoute ??= string.Empty;
+            holdSpot ??= string.Empty;
+            keys ??= new Player.KeyBindings();
+            keys.Sanitize();
         }
     }
 }

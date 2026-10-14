@@ -210,8 +210,8 @@ namespace AimTrainer.EditorTools
         {
             string[] order =
             {
-                SceneCatalog.RangeScene, SceneCatalog.SiteScene, SceneCatalog.AscentAScene, SceneCatalog.BindBScene,
-                SceneCatalog.HavenCScene, SceneCatalog.SplitAScene, SceneCatalog.MovementScene,
+                SceneCatalog.RangeScene, SceneCatalog.SiteScene, SceneCatalog.AscentScene, SceneCatalog.AscentAScene,
+                SceneCatalog.BindBScene, SceneCatalog.HavenCScene, SceneCatalog.SplitAScene, SceneCatalog.MovementScene,
             };
             var ours = order.Select(ScenePath).ToArray();
             var scenes = order.Select(ScenePath).Where(File.Exists).Select(p => new EditorBuildSettingsScene(p, true)).ToList();
@@ -357,6 +357,38 @@ namespace AimTrainer.EditorTools
             var point = go.AddComponent<BotSpawnPoint>();
             point.Configure(behavior, strafeWidth, localPeek, prefire, canShoot, label);
             return point;
+        }
+
+        /// <summary>地图区域（俯视图上的矩形），玩家走进去时小地图下方显示名称。</summary>
+        public static MapRegion Region(Transform parent, string label, float xMin, float xMax, float zMin, float zMax)
+        {
+            var go = new GameObject("Region_" + label);
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3((xMin + xMax) / 2f, 0f, (zMin + zMax) / 2f);
+            var region = go.AddComponent<MapRegion>();
+            region.Configure(label, new Vector2(xMin, zMin), new Vector2(xMax, zMax));
+            return region;
+        }
+
+        /// <summary>预瞄路线：start / yaw 是玩家出发点，points 是沿途要清的点位（按顺序）。</summary>
+        public static PrefireRoute Route(Transform parent, string label, Vector3 start, float yaw, BotSpawnPoint[] points)
+        {
+            var go = new GameObject("Route_" + label);
+            go.transform.SetParent(parent, false);
+            go.transform.SetPositionAndRotation(start, Quaternion.Euler(0f, yaw, 0f));
+            var route = go.AddComponent<PrefireRoute>();
+            route.Configure(label, points);
+            return route;
+        }
+
+        /// <summary>架枪位置：position / yaw 是玩家守的位置。入口点位用 Point 放在返回的 Transform 下面。</summary>
+        public static Transform Hold(Transform parent, string label, Vector3 position, float yaw)
+        {
+            var go = new GameObject("Hold_" + label);
+            go.transform.SetParent(parent, false);
+            go.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
+            go.AddComponent<HoldSpot>().Configure(label);
+            return go.transform;
         }
 
         public static BotSpawnArea Area(Transform parent, string name, Vector3 center, Vector3 size)

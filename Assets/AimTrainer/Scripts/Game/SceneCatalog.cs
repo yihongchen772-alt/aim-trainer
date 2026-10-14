@@ -20,6 +20,7 @@ namespace AimTrainer.Game
         public const string RangeScene = "Range";
         public const string SiteScene = "ASite";
         public const string MovementScene = "MovementTest";
+        public const string AscentScene = "Ascent";
         public const string AscentAScene = "AscentA";
         public const string BindBScene = "BindB";
         public const string HavenCScene = "HavenC";
@@ -29,6 +30,7 @@ namespace AimTrainer.Game
         {
             new Entry(RangeScene, "靶场", "开阔场地，少量掩体，适合甩枪和跟枪。"),
             new Entry(SiteScene, "A 点（原创）", "原创白模：大道、连接、高台、包点箱体，适合对枪和预瞄清点。"),
+            new Entry(AscentScene, "亚海悬城（整图）", "仿亚海悬城整图：A / 中路 / B 三路共 24 个区域，有小地图区域名称。预瞄可选 A 大、中路、B 大三条路线；架枪可选 A 点、B 点、中路顶三个位置。布局为近似复刻。"),
             new Entry(AscentAScene, "亚海悬城 A", "仿亚海悬城 A 点：A 大、连接、发电机、三箱、天堂 / 地狱、酒窖、花园。布局为近似复刻。"),
             new Entry(BindBScene, "源工重镇 B", "仿源工重镇 B 点：B 长廊、水烟房窗口、B 大箱、双箱、花园、肘角。布局为近似复刻。"),
             new Entry(HavenCScene, "隐世修所 C", "仿隐世修所 C 点：C 长廊、车库门、木头堆、大箱、角落。布局为近似复刻。"),

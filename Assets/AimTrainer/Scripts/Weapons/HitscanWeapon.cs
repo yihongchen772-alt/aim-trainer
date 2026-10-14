@@ -148,7 +148,7 @@ namespace AimTrainer.Weapons
             // 换弹时扳机仍算“按住”，FireClock 才不会在换弹结束的瞬间把它当成一次新的点击（半自动不会自己开一枪）。
             bool triggerHeld = armed && buttonDown && !suppressUntilRelease;
 
-            if (armed && keyboard != null && keyboard.rKey.wasPressedThisFrame) StartReload(stats);
+            if (armed && KeyBindings.WasPressed(keyboard, PlayerInputReader.Bindings.reload)) StartReload(stats);
 
             float movementSpread = WeaponMath.MovementSpread(stats, player.HorizontalSpeed, player.IsGrounded,
                 tuning.accurateSpeedThreshold, tuning.WalkSpeed, tuning.runSpeed);
