@@ -205,10 +205,14 @@ namespace AimTrainer.EditorTools
             UpdateBuildSettings();
         }
 
-        /// <summary>打包列表固定为：靶场（启动场景）、A 点、移动测试。</summary>
+        /// <summary>打包列表固定为：靶场（启动场景）、各张地图、移动测试。</summary>
         public static void UpdateBuildSettings()
         {
-            string[] order = { SceneCatalog.RangeScene, SceneCatalog.SiteScene, SceneCatalog.MovementScene };
+            string[] order =
+            {
+                SceneCatalog.RangeScene, SceneCatalog.SiteScene, SceneCatalog.AscentAScene, SceneCatalog.BindBScene,
+                SceneCatalog.HavenCScene, SceneCatalog.SplitAScene, SceneCatalog.MovementScene,
+            };
             var ours = order.Select(ScenePath).ToArray();
             var scenes = order.Select(ScenePath).Where(File.Exists).Select(p => new EditorBuildSettingsScene(p, true)).ToList();
             scenes.AddRange(EditorBuildSettings.scenes.Where(s => !ours.Contains(s.path)));
@@ -261,40 +265,67 @@ namespace AimTrainer.EditorTools
         }
 
         /// <summary>
-        /// 斜坡：从 (lowX, 0) 升到 (highX, height)，宽度方向是 z ∈ [zMin, zMax]。
+        /// 斜坡：沿 x 方向从 (lowX, baseY) 升到 (highX, baseY + height)，宽度方向是 z ∈ [zMin, zMax]。
         /// 斜坡下面用台阶状的方块填实，防止从侧面钻到坡底下。坡度不超过 45° 都能直接走上去，蹲着也能走。
         /// </summary>
         public static void RampAlongX(Transform parent, string name, float lowX, float highX, float zMin, float zMax,
-            float height, Material material)
+            float height, Material material, float baseY = 0f) =>
+            Ramp(parent, name, true, lowX, highX, zMin, zMax, height, material, baseY);
+
+        /// <summary>斜坡：沿 z 方向从 (lowZ, baseY) 升到 (highZ, baseY + height)，宽度方向是 x ∈ [xMin, xMax]。</summary>
+        public static void RampAlongZ(Transform parent, string name, float lowZ, float highZ, float xMin, float xMax,
+            float height, Material material, float baseY = 0f) =>
+            Ramp(parent, name, false, lowZ, highZ, xMin, xMax, height, material, baseY);
+
+        static void Ramp(Transform parent, string name, bool alongX, float low, float high, float wMin, float wMax,
+            float height, Material material, float baseY)
         {
-            float run = highX - lowX;
+            float run = high - low;
             float length = Mathf.Sqrt(run * run + height * height);
             float angle = Mathf.Atan2(height, Mathf.Abs(run)) * Mathf.Rad2Deg;
+            float rad = angle * Mathf.Deg2Rad;
             const float thickness = 0.4f;
             float dir = Mathf.Sign(run);
+            float mid = (low + high) / 2f;
+            float wMid = (wMin + wMax) / 2f;
 
-            // 坡面中点 (midX, height/2)，坡面法线指向上方并朝低处一侧。
-            float midX = (lowX + highX) / 2f;
-            float rad = angle * Mathf.Deg2Rad;
-            var normal = new Vector3(-dir * Mathf.Sin(rad), Mathf.Cos(rad), 0f);
-            Vector3 center = new Vector3(midX, height / 2f, (zMin + zMax) / 2f) - normal * (thickness / 2f);
+            // 坡面中点在 (mid, baseY + height/2)，坡面法线指向上方并朝低处一侧。
+            Vector3 surfaceMid;
+            Vector3 normal;
+            Quaternion rotation;
+            Vector3 scale;
+            if (alongX)
+            {
+                surfaceMid = new Vector3(mid, baseY + height / 2f, wMid);
+                normal = new Vector3(-dir * Mathf.Sin(rad), Mathf.Cos(rad), 0f);
+                rotation = Quaternion.Euler(0f, 0f, dir * angle);
+                scale = new Vector3(length, thickness, wMax - wMin);
+            }
+            else
+            {
+                surfaceMid = new Vector3(wMid, baseY + height / 2f, mid);
+                normal = new Vector3(0f, Mathf.Cos(rad), -dir * Mathf.Sin(rad));
+                rotation = Quaternion.Euler(-dir * angle, 0f, 0f);
+                scale = new Vector3(wMax - wMin, thickness, length);
+            }
 
             GameObject ramp = GameObject.CreatePrimitive(PrimitiveType.Cube);
             ramp.name = name;
             ramp.transform.SetParent(parent, false);
-            ramp.transform.position = center;
-            ramp.transform.rotation = Quaternion.Euler(0f, 0f, dir * angle);
-            ramp.transform.localScale = new Vector3(length, thickness, zMax - zMin);
+            ramp.transform.position = surfaceMid - normal * (thickness / 2f);
+            ramp.transform.rotation = rotation;
+            ramp.transform.localScale = scale;
             ramp.GetComponent<Renderer>().sharedMaterial = material;
             GameObjectUtility.SetStaticEditorFlags(ramp, StaticEditorFlags.BatchingStatic);
 
             const int fillers = 4;
             for (int i = 1; i < fillers; i++)
             {
-                float x0 = lowX + run * i / fillers;
-                float x1 = lowX + run * (i + 1) / fillers;
+                float a0 = low + run * i / fillers;
+                float a1 = low + run * (i + 1) / fillers;
                 float fillHeight = height * i / fillers - 0.05f;
-                Box(parent, name + "_Fill" + i, Mathf.Min(x0, x1), Mathf.Max(x0, x1), zMin, zMax, fillHeight, material);
+                if (alongX) Box(parent, name + "_Fill" + i, Mathf.Min(a0, a1), Mathf.Max(a0, a1), wMin, wMax, fillHeight, material, baseY);
+                else Box(parent, name + "_Fill" + i, wMin, wMax, Mathf.Min(a0, a1), Mathf.Max(a0, a1), fillHeight, material, baseY);
             }
         }
 

@@ -37,6 +37,11 @@ namespace AimTrainer.Weapons
 
         [Range(0f, 1f)] public float falloffMultiplier = 0.85f;
 
+        [Tooltip("第二段衰减：超过这个距离（米）后伤害改为乘以第二段系数。0 表示没有第二段。")]
+        [Min(0f)] public float falloffDistance2;
+
+        [Range(0f, 1f)] public float falloffMultiplier2 = 0.75f;
+
         [Header("精准度：基础散布（度）")]
         [Tooltip("静止时第一发的散布。")]
         [Min(0f)] public float firstShotSpread = 0.12f;
@@ -66,6 +71,9 @@ namespace AimTrainer.Weapons
 
         [Tooltip("每发上跳的角度。")]
         [Min(0f)] public float climbPerShot = 0.5f;
+
+        [Tooltip("上跳阶段每发向右偏的角度（负数向左），让弹道不是笔直往上。")]
+        public float climbYawPerShot;
 
         [Tooltip("最多上跳多少发，之后不再继续升高。")]
         [Min(0)] public int climbShots = 8;

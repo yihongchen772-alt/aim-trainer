@@ -46,6 +46,9 @@ namespace AimTrainer.Game
         [Tooltip("一局的时长（秒），0 表示不限时。")]
         public int durationSeconds = 60;
 
+        [Tooltip("使用的枪，见 WeaponPresets（vandal / phantom / spectre / sheriff / ghost）。")]
+        public string weaponId = Weapons.WeaponPresets.Vandal;
+
         /// <summary>当前设置（第一次访问时从本机读取）。</summary>
         public static GameSettings Current => current ??= Load();
 
@@ -85,6 +88,7 @@ namespace AimTrainer.Game
             durationSeconds = Mathf.Clamp(durationSeconds, 0, 3600);
             if (!Enum.IsDefined(typeof(TrainingMode), mode)) mode = TrainingMode.Flick;
             if (!Enum.IsDefined(typeof(BotDifficulty), difficulty)) difficulty = BotDifficulty.Normal;
+            if (!Weapons.WeaponPresets.IsKnown(weaponId)) weaponId = Weapons.WeaponPresets.Vandal;
         }
     }
 }

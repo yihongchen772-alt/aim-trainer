@@ -1,6 +1,7 @@
 using System.Globalization;
 using AimTrainer.Bots;
 using AimTrainer.Game;
+using AimTrainer.Weapons;
 using AimTrainer.Movement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -153,15 +154,42 @@ namespace AimTrainer.UI
             string activeScene = SceneManager.GetActiveScene().name;
 
             Section("地图");
-            GUILayout.BeginHorizontal();
+            // 每行 3 个地图按钮。
+            for (int row = 0; row < SceneCatalog.Training.Length; row += 3)
+            {
+                GUILayout.BeginHorizontal();
+                for (int i = row; i < row + 3 && i < SceneCatalog.Training.Length; i++)
+                {
+                    SceneCatalog.Entry entry = SceneCatalog.Training[i];
+                    if (Choice(entry.Title, entry.SceneName == activeScene, 154f) && entry.SceneName != activeScene)
+                    {
+                        session.LoadScene(entry.SceneName);
+                    }
+                }
+                GUILayout.EndHorizontal();
+            }
             foreach (SceneCatalog.Entry entry in SceneCatalog.Training)
             {
-                if (Choice(entry.Title, entry.SceneName == activeScene, 150f) && entry.SceneName != activeScene)
+                if (entry.SceneName == activeScene) GUILayout.Label(entry.Description, UiTheme.MutedText);
+            }
+
+            Section("武器");
+            GUILayout.BeginHorizontal();
+            for (int i = 0; i < WeaponPresets.All.Length; i++)
+            {
+                WeaponPresets.Entry entry = WeaponPresets.All[i];
+                string label = entry.Title.Split(' ')[0];
+                if (Choice(label, s.weaponId == entry.Id, 88f) && s.weaponId != entry.Id)
                 {
-                    session.LoadScene(entry.SceneName);
+                    s.weaponId = entry.Id;
+                    OptionChanged();
                 }
             }
             GUILayout.EndHorizontal();
+            foreach (WeaponPresets.Entry entry in WeaponPresets.All)
+            {
+                if (entry.Id == s.weaponId) GUILayout.Label(entry.Title + "：" + entry.Note, UiTheme.MutedText);
+            }
 
             Section("模式");
             GUILayout.BeginHorizontal();

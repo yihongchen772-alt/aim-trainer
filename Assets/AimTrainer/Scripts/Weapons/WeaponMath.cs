@@ -71,9 +71,9 @@ namespace AimTrainer.Weapons
         {
             int climbed = Math.Clamp(shotIndex - w.climbStartShot + 1, 0, w.climbShots);
             pitch = climbed * w.climbPerShot;
-            yaw = shotIndex >= w.swayStartShot
-                ? MathF.Sin((shotIndex - w.swayStartShot + 1) * w.swayFrequency) * w.swayAmplitude
-                : 0f;
+            yaw = climbed * w.climbYawPerShot;
+            if (shotIndex >= w.swayStartShot)
+                yaw += MathF.Sin((shotIndex - w.swayStartShot + 1) * w.swayFrequency) * w.swayAmplitude;
         }
 
         /// <summary>按部位和距离结算伤害。</summary>
@@ -85,7 +85,8 @@ namespace AimTrainer.Weapons
                 HitZone.Legs => w.legDamage,
                 _ => w.bodyDamage,
             };
-            if (w.falloffDistance > 0f && distance > w.falloffDistance) damage *= w.falloffMultiplier;
+            if (w.falloffDistance2 > 0f && distance > w.falloffDistance2) damage *= w.falloffMultiplier2;
+            else if (w.falloffDistance > 0f && distance > w.falloffDistance) damage *= w.falloffMultiplier;
             return damage;
         }
 

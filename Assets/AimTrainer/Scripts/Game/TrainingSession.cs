@@ -70,6 +70,7 @@ namespace AimTrainer.Game
         // 本局开始时锁定的训练选项。暂停时在菜单里改选项，要“重新开始”才生效，成绩也按这一局实际的选项记录。
         int activeBotCount = 1;
         BotDifficulty activeDifficulty = BotDifficulty.Normal;
+        string activeWeaponId = WeaponPresets.Vandal;
 
         public Phase CurrentPhase { get; private set; } = Phase.Menu;
 
@@ -258,6 +259,8 @@ namespace AimTrainer.Game
             activeDifficulty = Settings.difficulty;
             activeBotCount = Settings.botCount;
             ActiveDuration = Settings.durationSeconds;
+            activeWeaponId = Settings.weaponId;
+            if (weapon != null) weapon.SetStats(WeaponPresets.Create(activeWeaponId));
         }
 
         /// <summary>定点甩枪和移动靶用专用出生点（如果有），其他模式用正常出生点。</summary>
@@ -630,7 +633,7 @@ namespace AimTrainer.Game
         }
 
         string RecordKey() => BestRecords.Key(SceneManager.GetActiveScene().name, ActiveMode, activeDifficulty,
-            activeBotCount, ActiveDuration);
+            activeBotCount, ActiveDuration) + "." + activeWeaponId;
 
         T FindInScene<T>() where T : Component
         {

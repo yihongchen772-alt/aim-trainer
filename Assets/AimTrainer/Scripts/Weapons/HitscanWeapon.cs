@@ -67,13 +67,22 @@ namespace AimTrainer.Weapons
         readonly FireClock fireClock = new FireClock();
         readonly SprayTracker spray = new SprayTracker();
         WeaponStats defaultStats;
+        WeaponStats overrideStats;
         System.Random rng;
         int ammo = -1;
         float reloadTimer;
         bool suppressUntilRelease;
         bool wasArmed;
 
-        public WeaponStats Stats => definition != null ? definition.stats : defaultStats ??= new WeaponStats();
+        /// <summary>当前枪械参数：菜单选的枪（SetStats）优先，其次是 Definition 资源，最后是代码默认值。</summary>
+        public WeaponStats Stats => overrideStats ?? (definition != null ? definition.stats : defaultStats ??= new WeaponStats());
+
+        /// <summary>换枪：使用给定的参数（传 null 恢复使用 Definition 资源），并装满弹匣。</summary>
+        public void SetStats(WeaponStats stats)
+        {
+            overrideStats = stats;
+            ResetWeapon();
+        }
 
         public int Ammo => ammo < 0 ? Stats.magazineSize : ammo;
         public bool IsReloading => reloadTimer > 0f;
