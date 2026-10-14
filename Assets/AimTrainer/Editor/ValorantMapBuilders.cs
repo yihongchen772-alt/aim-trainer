@@ -340,7 +340,7 @@ namespace AimTrainer.EditorTools
             Transform hold0 = SceneKit.Hold(bots, "A 点架 A 大", new Vector3(-36f, 0f, 12f), 235f);
             SceneKit.Point(hold0, "A大出口", new Vector3(-48.5f, 0f, -5f), 57f, BotBehavior.Swing, new Vector3(0f, 0f, 9f), 3f, false);
             SceneKit.Point(hold0, "A大出口左", new Vector3(-51f, 0f, -8f), 56f, BotBehavior.Swing, new Vector3(0f, 0f, 10f), 3f, false);
-            SceneKit.Point(hold0, "树门", new Vector3(-22f, 0f, 27f), 205f, BotBehavior.Swing, new Vector3(-7f, 0f, 0f), 3f, false);
+            SceneKit.Point(hold0, "A大出口右", new Vector3(-46.2f, 0f, -6f), 49f, BotBehavior.Swing, new Vector3(0f, 0f, 9f), 3f, false);
             Transform hold1 = SceneKit.Hold(bots, "B 点架 B 大", new Vector3(57f, 0f, 12f), 225f);
             SceneKit.Point(hold1, "B大出口", new Vector3(45.5f, 0f, -8f), 49f, BotBehavior.Swing, new Vector3(0f, 0f, 10f), 3f, false);
             SceneKit.Point(hold1, "B大出口右", new Vector3(47.5f, 0f, -6f), 48f, BotBehavior.Swing, new Vector3(0f, 0f, 9.5f), 3f, false);

@@ -117,6 +117,13 @@ namespace AimTrainer.Player
                 case Key.Backspace: return "退格";
                 case Key.None: return "（无）";
                 default:
+                    // Key 是按美式键盘的物理位置命名的；字母键优先用当前键盘布局下的名称（例如法式键盘上 W 位置显示 Z）。
+                    Keyboard keyboard = Keyboard.current;
+                    if (keyboard != null && key >= Key.A && key <= Key.Z)
+                    {
+                        string local = keyboard[key].displayName;
+                        if (!string.IsNullOrEmpty(local)) return local.ToUpperInvariant();
+                    }
                     string text = key.ToString();
                     if (text.StartsWith("Digit", StringComparison.Ordinal)) return text.Substring(5);
                     if (text.StartsWith("Numpad", StringComparison.Ordinal)) return "小键盘 " + text.Substring(6);

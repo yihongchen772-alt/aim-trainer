@@ -541,16 +541,19 @@ namespace AimTrainer.Game
             if (!roundOver) respawnQueue.Add(Elapsed + 0.5f);
         }
 
+        /// <summary>对枪模式随机挑空闲点位：优先 40 米以内的（整图上不会刷到地图另一头），没有时再放宽。</summary>
         BotSpawnPoint PickFreePoint()
         {
-            var candidates = new List<BotSpawnPoint>();
+            var near = new List<BotSpawnPoint>();
+            var far = new List<BotSpawnPoint>();
             foreach (BotSpawnPoint point in spawnPoints)
             {
                 if (point == null || occupiedPoints.ContainsValue(point)) continue;
-                if (player != null && Vector3.Distance(point.transform.position, player.transform.position) < MinSpawnDistance)
-                    continue;
-                candidates.Add(point);
+                float distance = player != null ? Vector3.Distance(point.transform.position, player.transform.position) : 0f;
+                if (distance < MinSpawnDistance) continue;
+                (distance <= MaxSpawnDistance ? near : far).Add(point);
             }
+            List<BotSpawnPoint> candidates = near.Count > 0 ? near : far;
             return candidates.Count == 0 ? null : candidates[rng.Next(candidates.Count)];
         }
 

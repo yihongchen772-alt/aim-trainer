@@ -405,6 +405,8 @@ namespace AimTrainer.UI
                 {
                     rightTab = i;
                     capturingKey = -1;
+                    // 换页后控件数量不同：结束这次 IMGUI 事件，下一帧按新页面重新布局。
+                    GUIUtility.ExitGUI();
                 }
             }
             GUILayout.EndHorizontal();
@@ -475,7 +477,11 @@ namespace AimTrainer.UI
                     UiTheme.MutedText);
                 GUILayout.Space(4f);
             }
-            if (GUILayout.Button("清空记录", UiTheme.Button, GUILayout.Width(120f), GUILayout.Height(32f))) SessionHistory.Clear();
+            if (GUILayout.Button("清空记录", UiTheme.Button, GUILayout.Width(120f), GUILayout.Height(32f)))
+            {
+                SessionHistory.Clear();
+                GUIUtility.ExitGUI();
+            }
         }
 
         /// <summary>按上一局的设置再开一局；地图不同时先切换地图，加载完自动开始。</summary>
@@ -668,9 +674,14 @@ namespace AimTrainer.UI
             session.StartSession();
         }
 
+        /// <summary>
+        /// 训练选项改了以后，菜单里显示的控件可能变多或变少（路线 / 架枪位置选项、“重新开始后生效”提示），
+        /// 所以立刻结束这次 IMGUI 事件，下一帧重新布局，避免“Getting control N's position”错误。
+        /// </summary>
         void OptionChanged()
         {
             if (session.CurrentPhase == TrainingSession.Phase.Paused) optionsChangedWhilePaused = true;
+            GUIUtility.ExitGUI();
         }
 
         static void Section(string title)

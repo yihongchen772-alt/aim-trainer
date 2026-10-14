@@ -212,7 +212,7 @@ MAPS.append(dict(
         dict(name="A 点架 A 大", pos=(-36, 0, 12, 235), entries=[
             pt("A大出口", -48.5, 0, -5, 0, "Swing", 0, 9, prefire=False),
             pt("A大出口左", -51, 0, -8, 0, "Swing", 0, 10, prefire=False),
-            pt("树门", -22, 0, 27, 270, "Swing", -7, 0, prefire=False),
+            pt("A大出口右", -46.2, 0, -6, 0, "Swing", 0, 9, prefire=False),
         ]),
         dict(name="B 点架 B 大", pos=(57, 0, 12, 225), entries=[
             pt("B大出口", 45.5, 0, -8, 0, "Swing", 0, 10, prefire=False),
