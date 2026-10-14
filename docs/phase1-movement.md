@@ -4,18 +4,9 @@
 
 ## 打开项目
 
-需要 **Unity 6**。推荐安装 6000.0 LTS 的最新补丁版本（不低于 6000.0.58f2，更早的补丁版本有已公开的安全漏洞 CVE-2025-59489）。
+见 [getting-started.md](getting-started.md)。第一次打开项目会自动生成全部场景；移动测试场景在菜单 **AimTrainer → 打开场景 → 移动测试**，也可以用 **AimTrainer → 创建移动测试场景（第一阶段）** 单独重新生成。
 
-1. 打开 Unity Hub → **Add** → **Add project from disk** → 选择仓库里的 `unity` 文件夹。
-2. 如果 Hub 提示没有安装 6000.0.58f2，可以选择你已经安装的、版本号更新的 Unity 6 打开（会提示升级项目，点继续）。不要用更旧的版本打开。
-3. 第一次打开会自动安装 Input System 包。如果弹出 “enable the new input backends” 之类的对话框，点 **Yes**，编辑器会重启。
-   - 没有弹窗但运行时角色不动：打开 **Edit → Project Settings → Player → Other Settings → Active Input Handling**，改成 **Input System Package (New)** 或 **Both**。
-4. 菜单栏点 **AimTrainer → 创建移动测试场景（第一阶段）**，会生成并打开 `Assets/AimTrainer/Scenes/MovementTest.unity`。
-5. 点 **Play**，再点一下 Game 视图锁定鼠标，就可以开始走了。按 **Esc** 释放鼠标。
-
-第一次打开并生成场景后，`unity/` 下会多出 `ProjectSettings/` 里的设置文件、`Packages/packages-lock.json`、`Assets/AimTrainer/Scenes`、`Settings` 和 `Generated` 等文件，可以一起提交。`.meta` 文件必须和对应的文件一起提交，否则场景里的脚本引用会丢失。`Library/`、`Temp/`、`Logs/`、`UserSettings/` 已经在 `.gitignore` 里忽略了。
-
-**如果打开项目时报包错误**（比如某个包版本找不到）：在 Unity Hub 里用 **Universal 3D** 或 **3D (Built-In Render Pipeline)** 模板新建一个 Unity 6 项目，把仓库里的 `unity/Assets/AimTrainer` 整个文件夹复制到新项目的 `Assets` 下，再按第 3、4 步操作。
+移动测试场景没有训练菜单：点 **Play**，再点一下 Game 视图锁定鼠标就能走，按 **Esc** 释放鼠标。场景里也能开枪（打墙和靶子），但靶子没有生命值。
 
 ## 按键
 
@@ -25,7 +16,7 @@
 | 左 Shift（按住） | 静步 |
 | 左 Ctrl 或 C（按住） | 下蹲 |
 | 空格 / 鼠标滚轮 | 跳跃 |
-| 鼠标左键 | 锁定鼠标（第二阶段改为射击） |
+| 鼠标左键 | 锁定鼠标；锁定后射击 |
 | Esc | 释放鼠标 |
 | F1 | 显示 / 隐藏调试面板 |
 | F2 | 累计转角归零 |
@@ -171,7 +162,7 @@ PhysX 在自动上台阶时会把胶囊临时抬高一个台阶高度。下蹲�
 3. **反向急停**：在急停靶场按住 D 跑满速后，**松开 D 的同时按下 A**，“反向急停”应约为 33 毫秒加上空档时间。不要两个键一起按住：A 和 D 同时按住等于没有输入，只会算作松键急停。
 4. **灵敏度**：先退出 Play，在 Hierarchy 里选中 `Player`，把 **Player Controller** 组件的 Sensitivity 改成游戏内灵敏度，把 **Movement Debug Hud** 组件的 Mouse Dpi 改成你的鼠标 DPI，按 Ctrl+S 保存场景。再进入 Play，按 F2 归零，在鼠标垫上标出面板显示的“360° 需要的厘米数”，拖过这段距离后“累计转角”应约为 360°。也可以和端游里实际转一圈的距离对比。
 
-另外可以在 Unity 里运行单元测试：**Window → General → Test Runner → EditMode → Run All**，共 41 个测试，覆盖上面所有公式在不同帧率下的结果。
+另外可以在 Unity 里运行单元测试：**Window → General → Test Runner → EditMode → Run All**，其中移动相关的测试覆盖上面所有公式在不同帧率下的结果。
 
 ## 已知限制
 

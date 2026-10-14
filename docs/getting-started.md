@@ -1,0 +1,83 @@
+# 打开项目并开始训练
+
+## 准备
+
+1. 安装 [Unity Hub](https://unity.com/download)，登录（免费的个人版就够）。
+2. 在 Unity Hub 的 **Installs** 里安装 **Unity 6000.0 LTS**，版本不低于 **6000.0.58f2**（更早的补丁版本有已公开的安全漏洞 CVE-2025-59489）。安装时勾选 **Windows Build Support**（打包用）和 **Microsoft Visual Studio**（看代码用）。
+3. 下载仓库：GitHub 页面上点绿色的 **Code → Download ZIP** 并解压，或者 `git clone`。
+
+## 打开项目
+
+1. Unity Hub → **Projects** → 右上角 **Add** 旁边的下拉箭头 → **Add project from disk**。
+2. 选择**仓库文件夹本身**（里面能看到 `Assets`、`Packages`、`ProjectSettings` 三个文件夹）。ZIP 解压后有时会多套一层同名文件夹，要选里面那层。
+3. 如果提示版本不一致，选你装好的、版本号不低于 6000.0.58f2 的 Unity 6 打开。
+4. 第一次打开要导入几分钟。如果弹出对话框询问是否启用新的输入系统（Input System）的后端，点 **Yes**，编辑器会自动重启。
+5. 导入完成后会**自动生成全部训练场景**并打开“靶场”。直接点上方的 **▶ Play**，在菜单里点“开始训练”即可。
+
+## 按键
+
+| 按键 | 作用 |
+|------|------|
+| W A S D | 移动 |
+| 左 Shift（按住） | 静步 |
+| 左 Ctrl 或 C（按住） | 下蹲 |
+| 空格 / 鼠标滚轮 | 跳跃 |
+| 鼠标左键 | 射击（按住连发） |
+| R | 换弹 |
+| Esc | 暂停并打开菜单 |
+| F1 | 显示 / 隐藏左上角的调试面板 |
+| F2 | 调试面板里的累计转角归零 |
+
+在编辑器里按 Ctrl 加其他键时，偶尔会触发编辑器自己的快捷键；打包成独立程序后没有这个问题。
+
+## 菜单
+
+| 区域 | 选项 |
+|------|------|
+| 地图 | 靶场、A 点（原创白模） |
+| 模式 | 定点甩枪、移动靶、对枪、预瞄清点 |
+| 难度 | 简单、普通、困难、职业（对枪和预瞄时假人的反应和枪法） |
+| 假人数量 | 1 / 2 / 3 / 5 |
+| 时长 | 30 秒 / 1 分钟 / 2 分钟 / 不限时 |
+| 灵敏度 | 直接填游戏内数值，下面会显示转 360° 需要多少厘米 |
+| 准星 | 颜色、长度、间隙、粗细、外框、中心点、精准度指示 |
+| 画面与声音 | 音量、帧率上限、调试面板 |
+
+设置会保存在本机，下次打开自动恢复。每种“地图 + 模式 + 难度 + 假人数 + 时长”组合都会记录最好成绩。
+
+## 编辑器菜单（AimTrainer）
+
+| 菜单项 | 作用 |
+|--------|------|
+| 重新生成全部场景 | 修改了生成代码，或者场景被改坏时用。会覆盖三个场景，不会覆盖移动和枪械参数 |
+| 创建移动测试场景（第一阶段） | 只重新生成移动测试场景 |
+| 打开场景 → 靶场 / A 点 / 移动测试 | 打开对应场景 |
+| 应用高帧率项目设置 | 第五阶段的项目设置，见 [phase5-performance.md](phase5-performance.md) |
+
+## 打包成独立程序
+
+在编辑器里运行时，帧率和输入延迟都比打包后的程序差，最终手感以打包出来的程序为准：
+
+1. 先点一次 **AimTrainer → 应用高帧率项目设置**。
+2. **File → Build Profiles**（较早的 Unity 6 版本叫 **Build Settings**）→ 选 **Windows** → **Build And Run**，选一个空文件夹。
+3. 打包完会自动运行。以后直接双击那个文件夹里的 `.exe` 就能玩。
+
+场景已经自动加入打包列表，靶场是启动场景。
+
+## 提交到 Git
+
+第一次在 Unity 里打开后，会多出 `ProjectSettings/` 里的设置文件、`Packages/packages-lock.json`，以及 `Assets/AimTrainer/Scenes`、`Settings`、`Generated` 下生成的场景和资源，这些都可以提交。新生成的 `.meta` 文件必须和对应文件一起提交，否则场景里的脚本引用会丢失。`Library/`、`Temp/`、`Logs/`、`UserSettings/` 已经在 `.gitignore` 里忽略。
+
+## 打不开或运行不正常
+
+| 现象 | 处理 |
+|------|------|
+| Unity Hub 说不是 Unity 项目 | 选的文件夹不对，要选能直接看到 `Assets`、`Packages`、`ProjectSettings` 的那一层 |
+| 打开时报某个包找不到 | 用 Unity Hub 新建一个 Unity 6 的 3D 项目，把仓库里的 `Assets/AimTrainer` 整个文件夹复制到新项目的 `Assets` 下；再在 **Window → Package Manager → Unity Registry** 里安装 **Input System** |
+| 点了 Play 不能动 | 先点一下画面锁定鼠标。还不行的话：**Edit → Project Settings → Player → Other Settings → Active Input Handling** 改成 **Input System Package (New)** 或 **Both**，按提示重启 |
+| 菜单栏没有 AimTrainer | 看底部 Console 窗口有没有红色编译错误 |
+| 没有自动生成场景 | 点 **AimTrainer → 重新生成全部场景** |
+
+## 单元测试
+
+**Window → General → Test Runner → EditMode → Run All**，共 70 个测试，覆盖移动、射击、假人和计分的核心公式（不需要打开场景）。
