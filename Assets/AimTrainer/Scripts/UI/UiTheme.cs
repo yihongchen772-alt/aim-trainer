@@ -27,11 +27,35 @@ namespace AimTrainer.UI
         static GUIStyle hudText;
         static GUIStyle hudCenter;
         static GUIStyle statValue;
+        static Font font;
         static Texture2D panelTex;
         static Texture2D lightTex;
         static Texture2D accentTex;
         static Texture2D hoverTex;
         static Texture2D accentHoverTex;
+
+        /// <summary>
+        /// 界面字体：优先使用系统里的中文字体（微软雅黑等），避免默认字体缺少中文字形时显示成方块。
+        /// 系统里一个都找不到时退回 Unity 默认字体。
+        /// </summary>
+        public static Font Font
+        {
+            get
+            {
+                if (font != null) return font;
+                string[] names = { "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", "SimHei", "Arial" };
+                try
+                {
+                    font = Font.CreateDynamicFontFromOSFont(names, 16);
+                }
+                catch (System.Exception)
+                {
+                    font = null;
+                }
+                if (font == null) font = GUI.skin.font;
+                return font;
+            }
+        }
 
         /// <summary>按 1080p 设计的界面在当前分辨率下的缩放比例。</summary>
         public static float Scale => Mathf.Clamp(Screen.height / 1080f, 0.6f, 2.5f);
@@ -76,7 +100,7 @@ namespace AimTrainer.UI
             get
             {
                 if (field != null) return field;
-                field = new GUIStyle(GUI.skin.textField) { fontSize = 15, padding = new RectOffset(8, 8, 6, 6) };
+                field = new GUIStyle(GUI.skin.textField) { font = Font, fontSize = 15, padding = new RectOffset(8, 8, 6, 6) };
                 field.normal.background = LightTex;
                 field.focused.background = HoverTex;
                 field.normal.textColor = Text;
@@ -102,7 +126,7 @@ namespace AimTrainer.UI
 
         static GUIStyle Label(int size, FontStyle style, Color color)
         {
-            var s = new GUIStyle(GUI.skin.label) { fontSize = size, fontStyle = style, richText = false };
+            var s = new GUIStyle(GUI.skin.label) { font = Font, fontSize = size, fontStyle = style, richText = false };
             s.normal.textColor = color;
             return s;
         }
@@ -123,6 +147,7 @@ namespace AimTrainer.UI
         {
             var s = new GUIStyle(GUI.skin.button)
             {
+                font = Font,
                 fontSize = 14,
                 padding = new RectOffset(12, 12, 8, 8),
                 margin = new RectOffset(0, 6, 0, 6),

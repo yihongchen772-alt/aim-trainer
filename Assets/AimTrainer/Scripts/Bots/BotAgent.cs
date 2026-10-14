@@ -17,6 +17,7 @@ namespace AimTrainer.Bots
     ///
     /// 由 BotFactory 在运行时用方块拼出来，不需要预制体。头部判定框比看到的头大 20%。
     /// </summary>
+    [DefaultExecutionOrder(20)]
     public sealed class BotAgent : MonoBehaviour
     {
         const float PerceptionInterval = 0.05f;
@@ -249,7 +250,7 @@ namespace AimTrainer.Bots
 
             Vector3 next = transform.position + strafeAxis * (strafeDirection * skill.moveSpeed * dt);
             float offset = Vector3.Dot(next - anchor, strafeAxis);
-            if (Mathf.Abs(offset) > strafeHalfWidth || IsBlocked(next))
+            if (Mathf.Abs(offset) > strafeHalfWidth || IsBlocked(next) || !HasGround(next))
             {
                 strafeDirection = -strafeDirection;
                 return;
@@ -289,7 +290,7 @@ namespace AimTrainer.Bots
         bool MoveTowards(Vector3 destination, float dt)
         {
             Vector3 next = Vector3.MoveTowards(transform.position, destination, skill.moveSpeed * dt);
-            if (IsBlocked(next)) return true;
+            if (IsBlocked(next) || !HasGround(next)) return true;
             transform.position = next;
             return (next - destination).sqrMagnitude < 1e-4f;
         }
@@ -303,6 +304,18 @@ namespace AimTrainer.Bots
             for (int i = 0; i < count; i++)
             {
                 if (!overlapBuffer[i].transform.IsChildOf(transform)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>脚下 0.3 米内有没有地面（刷新在箱子顶或高台上的假人不会横跳到半空中）。</summary>
+        bool HasGround(Vector3 feet)
+        {
+            int count = Physics.RaycastNonAlloc(feet + Vector3.up * 0.5f, Vector3.down, rayBuffer, 0.8f,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                if (!rayBuffer[i].collider.transform.IsChildOf(transform)) return true;
             }
             return false;
         }

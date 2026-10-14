@@ -40,6 +40,13 @@ namespace AimTrainer.Diagnostics
 
         public void Bind(PlayerController target) => player = target;
 
+        /// <summary>只用于显示 360° 需要多少厘米。</summary>
+        public float MouseDpi
+        {
+            get => mouseDpi;
+            set => mouseDpi = Mathf.Max(100f, value);
+        }
+
         /// <summary>是否显示面板（F1 切换）。</summary>
         public bool Visible
         {
@@ -152,7 +159,15 @@ namespace AimTrainer.Diagnostics
 
         void OnGUI()
         {
-            if (!visible || player == null || Event.current.type != EventType.Repaint) return;
+            if (player == null || Event.current.type != EventType.Repaint) return;
+
+            // 没有训练菜单的场景（移动测试）里由这里画准星；训练场景的准星由 TrainingHud 画。
+            if (player.ManageCursor && player.IsCursorLocked)
+            {
+                UI.CrosshairDrawer.Draw(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), Game.GameSettings.Current);
+            }
+
+            if (!visible) return;
             EnsureStyles();
 
             Vector2 textSize = labelStyle.CalcSize(new GUIContent(cachedText));
@@ -189,7 +204,7 @@ namespace AimTrainer.Diagnostics
         {
             if (labelStyle != null) return;
             white = Texture2D.whiteTexture;
-            labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 14, richText = false, wordWrap = false };
+            labelStyle = new GUIStyle(GUI.skin.label) { font = UI.UiTheme.Font, fontSize = 14, richText = false, wordWrap = false };
             labelStyle.normal.textColor = Color.white;
         }
 

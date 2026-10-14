@@ -34,6 +34,7 @@ namespace AimTrainer.EditorTools
         const float WallHeight = 6f;
         const float HeavenHeight = 3.2f;
         static readonly Vector3 Spawn = new Vector3(-10f, 0f, -44f);
+        static readonly Vector3 AimSpawn = new Vector3(-12f, 0f, 2f);
 
         public static void Build()
         {
@@ -52,7 +53,13 @@ namespace AimTrainer.EditorTools
             // 包点区（含高台和箱子顶）随机刷新，用于定点甩枪和移动靶。
             SceneKit.Area(bots, "SiteSpawnArea", new Vector3(-13f, 3.5f, 15f), new Vector3(36f, 7f, 28f));
 
-            SceneKit.CreatePlayer(Spawn, 0f, withTraining: true);
+            SceneKit.PlayerRig rig = SceneKit.CreatePlayer(Spawn, 0f, withTraining: true);
+
+            // 定点甩枪和移动靶在包点区随机刷新，离进攻方出生点太远；这两个模式直接从包点入口出生。
+            var aimSpawn = new GameObject("AimModeSpawn").transform;
+            aimSpawn.SetPositionAndRotation(AimSpawn, Quaternion.identity);
+            rig.Session.SetAimSpawn(aimSpawn);
+
             SceneKit.SaveScene(scene, SceneCatalog.SiteScene);
         }
 
@@ -79,7 +86,8 @@ namespace AimTrainer.EditorTools
 
             SceneKit.Box(parent, "Generator_2.6", -22f, -18f, 10f, 13f, 2.6f, p.Block);
             SceneKit.Box(parent, "Boxes_1.4", -10f, -7f, 14f, 17f, 1.4f, p.Cover);
-            SceneKit.Box(parent, "Boxes_Top_1.0", -10f, -8.5f, 14f, 15.5f, 1f, p.Cover, 1.4f);
+            // 箱堆北半边再叠一层（总高 2.4 米），后面的探头假人才真正藏得住。
+            SceneKit.Box(parent, "Boxes_Top_1.0", -10f, -7f, 15.5f, 17f, 1f, p.Cover, 1.4f);
             SceneKit.Box(parent, "JumpBox_0.85", -27f, -25.5f, 3f, 4.5f, 0.85f, p.Cover);
             SceneKit.Box(parent, "PlantCover_1.0", -2f, 2f, 19f, 23f, 1f, p.Cover);
             SceneKit.Box(parent, "Pillar_4.0", -29f, -27f, 16f, 18f, 4f, p.Block);
@@ -109,7 +117,7 @@ namespace AimTrainer.EditorTools
             SceneKit.Point(bots, "连接深处", new Vector3(-5.5f, 0f, -14f), 180f, BotBehavior.Static, prefire: false);
 
             // 包点区。
-            SceneKit.Point(bots, "肘角", new Vector3(-18.8f, 0f, 3f), 250f, BotBehavior.Static);
+            SceneKit.Point(bots, "肘角", new Vector3(-18.8f, 0f, 3f), 20f, BotBehavior.Static);
             SceneKit.Point(bots, "发电机后探头", new Vector3(-20f, 0f, 14.6f), 200f, BotBehavior.Peek, new Vector3(-3.5f, 0f, 0f));
             SceneKit.Point(bots, "箱子后探头", new Vector3(-8.5f, 0f, 18.4f), 180f, BotBehavior.Peek, new Vector3(2.6f, 0f, 0f));
             SceneKit.Point(bots, "柱子后探头", new Vector3(-28f, 0f, 19.2f), 160f, BotBehavior.Peek, new Vector3(1.8f, 0f, 0f));

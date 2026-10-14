@@ -14,6 +14,8 @@
 4. 第一次打开要导入几分钟。如果弹出对话框询问是否启用新的输入系统（Input System）的后端，点 **Yes**，编辑器会自动重启。
 5. 导入完成后会**自动生成全部训练场景**并打开“靶场”。直接点上方的 **▶ Play**，在菜单里点“开始训练”即可。
 
+建议点 Play 之前，把 Game 视图工具栏上的 **Play Focused** 改成 **Play Maximized**（或者在 Game 视图上按 Shift+Space 最大化）。Game 视图太小时菜单文字会很小，需要滚动才能看到全部选项。
+
 ## 按键
 
 | 按键 | 作用 |
@@ -24,7 +26,7 @@
 | 空格 / 鼠标滚轮 | 跳跃 |
 | 鼠标左键 | 射击（按住连发） |
 | R | 换弹 |
-| Esc | 暂停并打开菜单 |
+| Esc | 暂停并打开菜单（打包后的程序里再按一次继续；编辑器里按 Esc 会释放鼠标，请点菜单里的“继续”） |
 | F1 | 显示 / 隐藏左上角的调试面板 |
 | F2 | 调试面板里的累计转角归零 |
 
@@ -36,7 +38,7 @@
 |------|------|
 | 地图 | 靶场、A 点（原创白模） |
 | 模式 | 定点甩枪、移动靶、对枪、预瞄清点 |
-| 难度 | 简单、普通、困难、职业（对枪和预瞄时假人的反应和枪法） |
+| 难度 | 简单、普通、困难、职业（对枪和预瞄时假人的反应和枪法；移动靶的横跳速度） |
 | 假人数量 | 1 / 2 / 3 / 5 |
 | 时长 | 30 秒 / 1 分钟 / 2 分钟 / 不限时 |
 | 灵敏度 | 直接填游戏内数值，下面会显示转 360° 需要多少厘米 |
@@ -74,7 +76,7 @@
 |------|------|
 | Unity Hub 说不是 Unity 项目 | 选的文件夹不对，要选能直接看到 `Assets`、`Packages`、`ProjectSettings` 的那一层 |
 | 打开时报某个包找不到 | 用 Unity Hub 新建一个 Unity 6 的 3D 项目，把仓库里的 `Assets/AimTrainer` 整个文件夹复制到新项目的 `Assets` 下；再在 **Window → Package Manager → Unity Registry** 里安装 **Input System** |
-| 点了 Play 不能动 | 先点一下画面锁定鼠标。还不行的话：**Edit → Project Settings → Player → Other Settings → Active Input Handling** 改成 **Input System Package (New)** 或 **Both**，按提示重启 |
+| 点了 Play 不能动 | 靶场和 A 点要先在菜单里点“开始训练”（暂停后点“继续”）；移动测试场景要先点一下画面锁定鼠标。还不行的话：**Edit → Project Settings → Player → Other Settings → Active Input Handling** 改成 **Input System Package (New)** 或 **Both**，按提示重启 |
 | 菜单栏没有 AimTrainer | 看底部 Console 窗口有没有红色编译错误 |
 | 没有自动生成场景 | 点 **AimTrainer → 重新生成全部场景** |
 

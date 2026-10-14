@@ -136,7 +136,8 @@ namespace AimTrainer.Weapons
             wasArmed = armed;
             if (suppressUntilRelease && !buttonDown) suppressUntilRelease = false;
 
-            bool triggerHeld = armed && buttonDown && !suppressUntilRelease && !IsReloading;
+            // 换弹时扳机仍算“按住”，FireClock 才不会在换弹结束的瞬间把它当成一次新的点击（半自动不会自己开一枪）。
+            bool triggerHeld = armed && buttonDown && !suppressUntilRelease;
 
             if (armed && keyboard != null && keyboard.rKey.wasPressedThisFrame) StartReload(stats);
 
@@ -147,14 +148,19 @@ namespace AimTrainer.Weapons
             CurrentSpread = WeaponMath.TotalSpread(stats, spray.PeekShotIndex(Time.timeAsDouble, stats),
                 player.CrouchAmount, movementSpread);
 
-            if (triggerHeld && Ammo <= 0)
+            if (IsReloading && triggerHeld && mouse.leftButton.wasPressedThisFrame && playerAudio != null)
             {
-                if (mouse.leftButton.wasPressedThisFrame && playerAudio != null) playerAudio.PlayDryFire();
-                StartReload(stats);
-                triggerHeld = false;
+                playerAudio.PlayDryFire();
             }
 
             int shots = fireClock.Tick(Time.timeAsDouble, triggerHeld, stats.ShotInterval, stats.automatic);
+            if (IsReloading) shots = 0;
+            if (shots > 0)
+            {
+                // 移动的假人只改了 Transform，物理世界要到下一次物理步才更新；开枪前同步一次，
+                // 射线才会和画面上看到的假人位置一致。
+                Physics.SyncTransforms();
+            }
             for (int i = 0; i < shots && Ammo > 0; i++) FireOne(stats, movementSpread);
 
             if (Ammo <= 0 && !IsReloading) StartReload(stats);

@@ -14,10 +14,17 @@ namespace AimTrainer.EditorTools
     {
         const string Menu = "AimTrainer/";
 
-        public static bool AllScenesExist() =>
-            File.Exists(SceneKit.ScenePath(SceneCatalog.RangeScene)) &&
-            File.Exists(SceneKit.ScenePath(SceneCatalog.SiteScene)) &&
-            File.Exists(SceneKit.ScenePath(SceneCatalog.MovementScene));
+        static readonly string[] AllScenes = { SceneCatalog.RangeScene, SceneCatalog.SiteScene, SceneCatalog.MovementScene };
+
+        /// <summary>任意一个训练场景已经存在（说明不是第一次打开，或者用户改过场景）。</summary>
+        public static bool AnySceneExists()
+        {
+            foreach (string scene in AllScenes)
+            {
+                if (File.Exists(SceneKit.ScenePath(scene))) return true;
+            }
+            return false;
+        }
 
         [MenuItem(Menu + "重新生成全部场景", true)]
         [MenuItem(Menu + "创建移动测试场景（第一阶段）", true)]
@@ -27,7 +34,7 @@ namespace AimTrainer.EditorTools
         static void GenerateAllFromMenu()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-            if (AllScenesExist() && !EditorUtility.DisplayDialog("重新生成全部场景",
+            if (AnySceneExists() && !EditorUtility.DisplayDialog("重新生成全部场景",
                     "靶场、A 点和移动测试场景会被覆盖（移动参数和枪械参数资源不会被覆盖）。", "覆盖", "取消"))
             {
                 return;
@@ -67,8 +74,20 @@ namespace AimTrainer.EditorTools
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-            if (!File.Exists(SceneKit.ScenePath(sceneName))) GenerateAll();
+            // 只补上缺少的那一个场景，不覆盖其他已经存在（可能被改过）的场景。
+            if (!File.Exists(SceneKit.ScenePath(sceneName)))
+            {
+                BuildScene(sceneName);
+                AssetDatabase.SaveAssets();
+            }
             OpenScene(sceneName);
+        }
+
+        static void BuildScene(string sceneName)
+        {
+            if (sceneName == SceneCatalog.SiteScene) SiteSceneBuilder.Build();
+            else if (sceneName == SceneCatalog.MovementScene) MovementTestSceneBuilder.Build();
+            else RangeSceneBuilder.Build();
         }
 
         public static void OpenScene(string sceneName)
@@ -80,7 +99,7 @@ namespace AimTrainer.EditorTools
 
     /// <summary>
     /// 第一次打开项目时自动生成全部场景并打开靶场，这样打开项目后直接点 Play 就能玩。
-    /// 每次启动编辑器只检查一次；场景已经存在时不做任何事。
+    /// 每次启动编辑器只检查一次；只要有任意一个训练场景已经存在就不做任何事，绝不覆盖已有场景。
     /// </summary>
     [InitializeOnLoad]
     static class AutoSetup
@@ -99,7 +118,7 @@ namespace AimTrainer.EditorTools
                 return;
             }
             SessionState.SetBool(SessionKey, true);
-            if (SceneGenerator.AllScenesExist()) return;
+            if (SceneGenerator.AnySceneExists()) return;
 
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             Debug.Log("[AimTrainer] 第一次打开项目，正在生成训练场景……");

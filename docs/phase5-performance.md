@@ -26,7 +26,7 @@
 - `QualitySettings.maxQueuedFrames = 1`：CPU 最多领先 GPU 一帧。帧率不稳时可以在组件里改成 2
 - Input System 设为每帧 Update 之前处理输入（`ProcessEventsInDynamicUpdate`）
 
-菜单里的“帧率上限”可以选不限 / 144 / 240 / 360。显卡发热或画面撕裂严重时，限制在显示器刷新率的 2 倍左右也很合适。
+菜单里的“帧率上限”可以选不限 / 60 / 144 / 240 / 360。显卡发热或画面撕裂严重时，限制在显示器刷新率的 2 倍左右也很合适。
 
 ## 项目设置（菜单 AimTrainer → 应用高帧率项目设置）
 

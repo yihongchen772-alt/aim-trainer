@@ -25,13 +25,17 @@ namespace AimTrainer.UI
 
         static readonly int[] BotCounts = { 1, 2, 3, 5 };
         static readonly int[] Durations = { 30, 60, 120, 0 };
-        static readonly int[] FrameCaps = { 0, 144, 240, 360 };
+        static readonly int[] FrameCaps = { 0, 60, 144, 240, 360 };
 
         [SerializeField] TrainingSession session;
 
         string sensitivityText;
         string dpiText;
         bool optionsChangedWhilePaused;
+        Vector2 scroll;
+        Vector2 areaOrigin;
+        Rect scrollRect;
+        Vector2 previewCenter;
 
         public void Bind(TrainingSession training) => session = training;
 
@@ -57,8 +61,11 @@ namespace AimTrainer.UI
             GUI.DrawTexture(panel, UiTheme.PanelTex);
             UiTheme.Fill(new Rect(panel.x, panel.y, 56f, 3f), UiTheme.Accent);
 
-            GUILayout.BeginArea(new Rect(panel.x + 24f, panel.y + 18f, panel.width - 48f, panel.height - 36f));
+            areaOrigin = new Vector2(panel.x + 24f, panel.y + 18f);
+            GUILayout.BeginArea(new Rect(areaOrigin.x, areaOrigin.y, panel.width - 48f, panel.height - 36f));
             DrawHeader();
+            // 窗口太小时中间部分可以滚动，底部的按钮始终可见。
+            scroll = GUILayout.BeginScrollView(scroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.ExpandHeight(true));
             if (session.CurrentPhase == TrainingSession.Phase.Results) DrawResults();
             GUILayout.BeginHorizontal();
             GUILayout.BeginVertical(GUILayout.Width(ColumnWidth));
@@ -69,9 +76,19 @@ namespace AimTrainer.UI
             DrawPreferences();
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
-            GUILayout.FlexibleSpace();
+            GUILayout.EndScrollView();
+            if (Event.current.type == EventType.Repaint) scrollRect = GUILayoutUtility.GetLastRect();
             DrawFooter();
             GUILayout.EndArea();
+
+            // 准星预览按实际像素绘制（和游戏里看到的大小一样），所以放在缩放矩阵之外画。
+            if (Event.current.type == EventType.Repaint)
+            {
+                GUI.matrix = Matrix4x4.identity;
+                Vector2 center = (areaOrigin + scrollRect.position + previewCenter - scroll) * scale;
+                var clip = new Rect((areaOrigin + scrollRect.position) * scale, scrollRect.size * scale);
+                if (clip.Contains(center)) CrosshairDrawer.Draw(center, session.Settings);
+            }
 
             GUI.matrix = previous;
         }
@@ -91,8 +108,8 @@ namespace AimTrainer.UI
         void DrawResults()
         {
             SessionStats s = session.Stats;
-            bool prefire = session.Settings.mode == TrainingMode.Prefire;
-            bool shooting = TrainingModeInfo.BotsShoot(session.Settings.mode);
+            bool prefire = session.ActiveMode == TrainingMode.Prefire;
+            bool shooting = TrainingModeInfo.BotsShoot(session.ActiveMode);
 
             GUILayout.Label("本局成绩", UiTheme.Heading);
             GUILayout.BeginHorizontal();
@@ -153,7 +170,7 @@ namespace AimTrainer.UI
             GUILayout.EndHorizontal();
             GUILayout.Label(TrainingModeInfo.Description(s.mode), UiTheme.MutedText);
 
-            Section("假人难度（对枪和预瞄时的反应和枪法）");
+            Section("假人难度（对枪 / 预瞄的反应和枪法，移动靶的横跳速度）");
             GUILayout.BeginHorizontal();
             string[] names = { "简单", "普通", "困难", "职业" };
             for (int i = 0; i < names.Length; i++)
@@ -167,7 +184,7 @@ namespace AimTrainer.UI
             }
             GUILayout.EndHorizontal();
             BotSkill skill = BotSkill.For(s.difficulty);
-            GUILayout.Label($"反应 {skill.reactionTime * 1000f:0} ms · 命中率 {skill.hitChance * 100f:0}% · 爆头率 {skill.headshotChance * 100f:0}%",
+            GUILayout.Label($"反应 {skill.reactionTime * 1000f:0} ms · 命中率 {skill.hitChance * 100f:0}% · 爆头率 {skill.headshotChance * 100f:0}% · 移动 {skill.moveSpeed:0.0} m/s",
                 UiTheme.MutedText);
 
             Section(s.mode == TrainingMode.Prefire ? "同时在场的假人（预瞄模式使用地图上所有预瞄点位）" : "同时在场的假人");
@@ -240,6 +257,7 @@ namespace AimTrainer.UI
                 if (float.TryParse(newDpi, NumberStyles.Float, CultureInfo.InvariantCulture, out float dpi) && dpi >= 100f)
                 {
                     s.mouseDpi = dpi;
+                    session.ApplySettings();
                 }
             }
             GUILayout.Space(8f);
@@ -283,15 +301,7 @@ namespace AimTrainer.UI
             UiTheme.Fill(preview, new Color(0.45f, 0.5f, 0.56f));
             UiTheme.Fill(new Rect(preview.x, preview.y + preview.height * 0.6f, preview.width, preview.height * 0.4f),
                 new Color(0.62f, 0.6f, 0.56f));
-            if (Event.current.type == EventType.Repaint)
-            {
-                // 预览按实际像素大小绘制，和游戏里看到的一样。
-                Matrix4x4 m = GUI.matrix;
-                Vector2 c = m.MultiplyPoint3x4(preview.center);
-                GUI.matrix = Matrix4x4.identity;
-                CrosshairDrawer.Draw(c, s);
-                GUI.matrix = m;
-            }
+            if (Event.current.type == EventType.Repaint) previewCenter = preview.center;
             GUILayout.EndHorizontal();
 
             Section("画面与声音");
@@ -327,6 +337,10 @@ namespace AimTrainer.UI
         void DrawFooter()
         {
             GUILayout.Label("WASD 移动 · Shift 静步 · Ctrl/C 下蹲 · 空格跳 · 左键射击 · R 换弹 · Esc 暂停 · F1 调试面板", UiTheme.MutedText);
+#if UNITY_EDITOR
+            // 这一行在每个 IMGUI 事件里都画（不随阶段变化），避免布局在不同事件之间不一致。
+            GUILayout.Label("在编辑器里按 Esc 会释放鼠标，暂停后请点“继续”回到游戏（打包后的程序可以再按 Esc 继续）。", UiTheme.MutedText);
+#endif
             GUILayout.Space(6f);
             GUILayout.BeginHorizontal();
             switch (session.CurrentPhase)

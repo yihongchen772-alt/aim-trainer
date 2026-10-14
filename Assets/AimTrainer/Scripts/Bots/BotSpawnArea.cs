@@ -28,7 +28,7 @@ namespace AimTrainer.Bots
                 float x = center.x + (float)(rng.NextDouble() - 0.5) * size.x;
                 float z = center.z + (float)(rng.NextDouble() - 0.5) * size.z;
                 var top = new Vector3(x, center.y + size.y * 0.5f, z);
-                if (!Physics.Raycast(top, Vector3.down, out RaycastHit hit, size.y, Physics.DefaultRaycastLayers,
+                if (!Physics.Raycast(top, Vector3.down, out RaycastHit hit, size.y + 1f, Physics.DefaultRaycastLayers,
                         QueryTriggerInteraction.Ignore))
                 {
                     continue;

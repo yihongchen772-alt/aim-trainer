@@ -79,13 +79,13 @@ namespace AimTrainer.UI
             {
                 lastStatsUpdate = Time.unscaledTime;
                 SessionStats s = session.Stats;
-                bool prefire = session.Settings.mode == TrainingMode.Prefire;
+                bool prefire = session.ActiveMode == TrainingMode.Prefire;
                 float remaining = session.Remaining;
                 timerText = remaining >= 0f ? FormatClock(remaining) : FormatClock(session.Elapsed);
 
                 string line = $"击杀 {s.Kills}   命中率 {s.Accuracy * 100f:0}%   爆头率 {s.HeadshotRate * 100f:0}%";
                 if (s.AverageKillTime > 0f) line += $"   平均击杀 {s.AverageKillTime * 1000f:0} ms";
-                if (TrainingModeInfo.BotsShoot(session.Settings.mode)) line += $"   死亡 {s.Deaths}";
+                if (TrainingModeInfo.BotsShoot(session.ActiveMode)) line += $"   死亡 {s.Deaths}";
                 if (prefire)
                 {
                     line += $"\n剩余假人 {session.AliveBots}   本轮 {session.RoundTime:0.00} s";
@@ -109,7 +109,7 @@ namespace AimTrainer.UI
 
         void DrawHealth(float height)
         {
-            if (!TrainingModeInfo.BotsShoot(session.Settings.mode) || session.PlayerHealth == null) return;
+            if (!TrainingModeInfo.BotsShoot(session.ActiveMode) || session.PlayerHealth == null) return;
             Health health = session.PlayerHealth;
             var style = UiTheme.HudBig;
             style.alignment = TextAnchor.LowerLeft;

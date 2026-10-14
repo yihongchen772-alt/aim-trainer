@@ -28,7 +28,6 @@ namespace AimTrainer.EditorTools
         {
             var log = new StringBuilder();
 
-            PlayerSettings.productName = "战术练枪场";
             PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
             PlayerSettings.defaultIsNativeResolution = true;
             PlayerSettings.runInBackground = false;

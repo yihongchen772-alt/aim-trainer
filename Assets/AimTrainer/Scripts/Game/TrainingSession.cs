@@ -43,6 +43,9 @@ namespace AimTrainer.Game
         [SerializeField] Health playerHealth;
         [SerializeField] PlayerAudio playerAudio;
         [SerializeField] Transform playerSpawn;
+
+        [Tooltip("可选：定点甩枪和移动靶模式的出生点。离随机刷新区域太远的地图（比如 A 点）用它把玩家直接放到包点附近。")]
+        [SerializeField] Transform aimSpawn;
         [SerializeField] PerformanceSettings performance;
         [SerializeField] MovementDebugHud debugHud;
 
@@ -64,7 +67,17 @@ namespace AimTrainer.Game
         string message = string.Empty;
         float messageUntil;
 
+        // 本局开始时锁定的训练选项。暂停时在菜单里改选项，要“重新开始”才生效，成绩也按这一局实际的选项记录。
+        int activeBotCount = 1;
+        BotDifficulty activeDifficulty = BotDifficulty.Normal;
+
         public Phase CurrentPhase { get; private set; } = Phase.Menu;
+
+        /// <summary>本局实际使用的模式（开始时从设置里锁定）。</summary>
+        public TrainingMode ActiveMode { get; private set; } = TrainingMode.Flick;
+
+        /// <summary>本局实际使用的时长（秒），0 表示不限时。</summary>
+        public int ActiveDuration { get; private set; }
         public SessionStats Stats => stats;
         public GameSettings Settings => GameSettings.Current;
         public PlayerController Player => player;
@@ -75,7 +88,7 @@ namespace AimTrainer.Game
         public float Elapsed { get; private set; }
 
         /// <summary>本局剩余时间（秒），不限时为 -1。</summary>
-        public float Remaining => Settings.durationSeconds > 0 ? Mathf.Max(0f, Settings.durationSeconds - Elapsed) : -1f;
+        public float Remaining => ActiveDuration > 0 ? Mathf.Max(0f, ActiveDuration - Elapsed) : -1f;
 
         /// <summary>当前回合已用时间（预瞄模式显示）。</summary>
         public float RoundTime => roundOver ? stats.LastRoundTime : Elapsed - roundStartTime;
@@ -105,6 +118,9 @@ namespace AimTrainer.Game
                 return count;
             }
         }
+
+        /// <summary>设置定点甩枪和移动靶模式专用的出生点（可选）。</summary>
+        public void SetAimSpawn(Transform spawn) => aimSpawn = spawn;
 
         public void Configure(PlayerController controller, HitscanWeapon gun, Health health, PlayerAudio sounds,
             Transform spawn, PerformanceSettings perf, MovementDebugHud hud)
@@ -139,13 +155,18 @@ namespace AimTrainer.Game
 
         void Start()
         {
+            LockActiveOptions();
             ApplySettings();
-            if (player != null && playerSpawn != null) player.Teleport(playerSpawn.position, playerSpawn.eulerAngles.y);
+            Transform spawn = CurrentSpawn();
+            if (player != null && spawn != null) player.Teleport(spawn.position, spawn.eulerAngles.y);
             EnterMenu();
         }
 
+        void OnApplicationQuit() => Settings.Save();
+
         void OnDestroy()
         {
+            Settings.Save();
             Time.timeScale = 1f;
             if (weapon != null) weapon.ShotFired -= OnShotFired;
             if (playerHealth != null)
@@ -162,6 +183,9 @@ namespace AimTrainer.Game
 
         void Update()
         {
+            // F1 切换的调试面板也记到设置里，菜单里的开关和下次启动都保持一致。
+            if (debugHud != null && debugHud.Visible != Settings.showDebugPanel) Settings.showDebugPanel = debugHud.Visible;
+
             Keyboard keyboard = Keyboard.current;
             bool escape = keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
             if (CurrentPhase == Phase.Playing)
@@ -172,11 +196,16 @@ namespace AimTrainer.Game
                     Pause();
                     return;
                 }
+                // 假人只改 Transform，物理世界要到下一次物理步才更新；每帧同步一次，刷新检查和射线都用最新位置。
+                Physics.SyncTransforms();
                 TickPlaying(Time.deltaTime);
             }
             else if (CurrentPhase == Phase.Paused && escape)
             {
+#if !UNITY_EDITOR
+                // 编辑器里按 Esc 总会释放鼠标，这里恢复也会立刻被打断，所以只在打包后的程序里用 Esc 继续。
                 Resume();
+#endif
             }
         }
 
@@ -186,6 +215,7 @@ namespace AimTrainer.Game
         public void StartSession()
         {
             Settings.Save();
+            LockActiveOptions();
             ApplySettings();
             stats.Reset();
             Elapsed = 0f;
@@ -205,6 +235,7 @@ namespace AimTrainer.Game
         public void Resume()
         {
             if (CurrentPhase != Phase.Paused) return;
+            Settings.Save();
             ApplySettings();
             SetPhase(Phase.Playing);
         }
@@ -213,11 +244,27 @@ namespace AimTrainer.Game
         public void EndSession()
         {
             if (CurrentPhase != Phase.Playing && CurrentPhase != Phase.Paused) return;
-            bool roundBased = Settings.mode == TrainingMode.Prefire;
+            bool roundBased = ActiveMode == TrainingMode.Prefire;
             string key = RecordKey();
             PreviousBest = BestRecords.Get(key);
             NewRecord = BestRecords.Submit(key, stats, roundBased);
             SetPhase(Phase.Results);
+        }
+
+        /// <summary>开始新的一局时，把菜单里的训练选项锁定为本局使用的选项。</summary>
+        void LockActiveOptions()
+        {
+            ActiveMode = Settings.mode;
+            activeDifficulty = Settings.difficulty;
+            activeBotCount = Settings.botCount;
+            ActiveDuration = Settings.durationSeconds;
+        }
+
+        /// <summary>定点甩枪和移动靶用专用出生点（如果有），其他模式用正常出生点。</summary>
+        Transform CurrentSpawn()
+        {
+            bool aimMode = ActiveMode == TrainingMode.Flick || ActiveMode == TrainingMode.Strafe;
+            return aimMode && aimSpawn != null ? aimSpawn : playerSpawn;
         }
 
         /// <summary>回到菜单（不保存成绩），场景里的假人全部清除。</summary>
@@ -255,7 +302,11 @@ namespace AimTrainer.Game
             }
             AudioListener.volume = s.volume;
             if (performance != null) performance.SetFrameRateCap(s.frameRateCap);
-            if (debugHud != null) debugHud.Visible = s.showDebugPanel;
+            if (debugHud != null)
+            {
+                debugHud.Visible = s.showDebugPanel;
+                debugHud.MouseDpi = s.mouseDpi;
+            }
         }
 
         void SetPhase(Phase phase)
@@ -297,7 +348,7 @@ namespace AimTrainer.Game
                 if (!roundOver) SpawnOne();
             }
 
-            if (Settings.durationSeconds > 0 && Elapsed >= Settings.durationSeconds) EndSession();
+            if (ActiveDuration > 0 && Elapsed >= ActiveDuration) EndSession();
         }
 
         void StartRound()
@@ -308,11 +359,12 @@ namespace AimTrainer.Game
             roundStartTime = Elapsed;
 
             if (playerHealth != null) playerHealth.ResetHealth();
-            if (player != null && playerSpawn != null) player.Teleport(playerSpawn.position, playerSpawn.eulerAngles.y);
+            Transform spawn = CurrentSpawn();
+            if (player != null && spawn != null) player.Teleport(spawn.position, spawn.eulerAngles.y);
             if (weapon != null) weapon.ResetWeapon();
             RefreshInput();
 
-            if (Settings.mode == TrainingMode.Prefire)
+            if (ActiveMode == TrainingMode.Prefire)
             {
                 int spawned = 0;
                 foreach (BotSpawnPoint point in spawnPoints)
@@ -325,27 +377,33 @@ namespace AimTrainer.Game
                 ShowMessage("这张地图没有预瞄点位，改为随机刷新。", 3f);
             }
 
-            for (int i = 0; i < Settings.botCount; i++) SpawnOne();
+            for (int i = 0; i < activeBotCount; i++) SpawnOne();
         }
 
         // ---------- 刷新假人 ----------
 
         void SpawnOne()
         {
-            switch (Settings.mode)
+            switch (ActiveMode)
             {
                 case TrainingMode.Flick:
-                    SpawnInView(BotBehavior.Static, false);
+                    if (!SpawnInView(BotBehavior.Static, false)) RetrySpawnLater();
                     break;
                 case TrainingMode.Strafe:
-                    SpawnInView(BotBehavior.Strafe, false);
+                    if (!SpawnInView(BotBehavior.Strafe, false)) RetrySpawnLater();
                     break;
                 default:
                     BotSpawnPoint point = PickFreePoint();
                     if (point != null) SpawnAtPoint(point, point.CanShoot);
-                    else SpawnInView(BotBehavior.Strafe, true);
+                    else if (!SpawnInView(BotBehavior.Strafe, true)) RetrySpawnLater();
                     break;
             }
+        }
+
+        /// <summary>这次没找到合适的位置（例如被其他假人占满）：0.5 秒后再试，不会少一个假人。</summary>
+        void RetrySpawnLater()
+        {
+            if (!roundOver) respawnQueue.Add(Elapsed + 0.5f);
         }
 
         BotSpawnPoint PickFreePoint()
@@ -369,10 +427,13 @@ namespace AimTrainer.Game
             Register(bot);
         }
 
-        /// <summary>在随机刷新区域里找一个你看得见的位置放假人；找不到合适位置时逐步放宽条件。</summary>
-        void SpawnInView(BotBehavior behavior, bool canShoot)
+        /// <summary>
+        /// 在随机刷新区域里找一个你看得见的位置放假人。找不到时逐步放宽条件：
+        /// 先不要求在视野里，再不要求没有遮挡、也不限最远距离。成功放下假人时返回 true。
+        /// </summary>
+        bool SpawnInView(BotBehavior behavior, bool canShoot)
         {
-            if (player == null) return;
+            if (player == null) return false;
             Vector3 feet = default;
             bool found = false;
             for (int pass = 0; pass < 3 && !found; pass++)
@@ -380,7 +441,11 @@ namespace AimTrainer.Game
                 for (int attempt = 0; attempt < 30 && !found; attempt++)
                 {
                     if (!TrySampleSpawn(out Vector3 candidate)) break;
-                    if (!IsGoodSpawn(candidate, requireInView: pass == 0, requireLineOfSight: pass <= 1)) continue;
+                    if (!IsGoodSpawn(candidate, requireInView: pass == 0, requireLineOfSight: pass <= 1,
+                            enforceMaxDistance: pass <= 1))
+                    {
+                        continue;
+                    }
                     feet = candidate;
                     found = true;
                 }
@@ -389,7 +454,7 @@ namespace AimTrainer.Game
             if (!found)
             {
                 // 地图里既没有刷新区域也没有点位：放在玩家前方 12 米。
-                if (spawnAreas.Length > 0 || spawnPoints.Length > 0) return;
+                if (spawnAreas.Length > 0 || spawnPoints.Length > 0) return false;
                 feet = player.transform.position + player.transform.forward * 12f;
             }
 
@@ -397,6 +462,7 @@ namespace AimTrainer.Game
             float yaw = Mathf.Atan2(toPlayer.x, toPlayer.z) * Mathf.Rad2Deg;
             BotAgent bot = BotFactory.Create(feet, yaw, CurrentSkill(), player, behavior, canShoot, null, NextSeed());
             Register(bot);
+            return true;
         }
 
         bool TrySampleSpawn(out Vector3 feet)
@@ -419,13 +485,13 @@ namespace AimTrainer.Game
             return false;
         }
 
-        bool IsGoodSpawn(Vector3 feet, bool requireInView, bool requireLineOfSight)
+        bool IsGoodSpawn(Vector3 feet, bool requireInView, bool requireLineOfSight, bool enforceMaxDistance)
         {
             Vector3 eye = player.EyePosition;
             Vector3 head = feet + Vector3.up * BotFactory.HeadCenterHeight;
             Vector3 toHead = head - eye;
             float flatDistance = new Vector2(toHead.x, toHead.z).magnitude;
-            if (flatDistance < MinSpawnDistance || flatDistance > MaxSpawnDistance) return false;
+            if (flatDistance < MinSpawnDistance || (enforceMaxDistance && flatDistance > MaxSpawnDistance)) return false;
 
             foreach (BotAgent bot in bots)
             {
@@ -477,7 +543,7 @@ namespace AimTrainer.Game
             }
         }
 
-        BotSkill CurrentSkill() => BotSkill.For(Settings.difficulty);
+        BotSkill CurrentSkill() => BotSkill.For(activeDifficulty);
 
         int NextSeed() => unchecked(rng.Next() ^ ++spawnSerial * 7919);
 
@@ -492,13 +558,16 @@ namespace AimTrainer.Game
         void OnBotKilled(BotAgent bot, DamageResult result)
         {
             if (CurrentPhase != Phase.Playing) return;
-            bool lineOfSightMode = Settings.mode == TrainingMode.Duel || Settings.mode == TrainingMode.Prefire;
-            float start = lineOfSightMode && bot.FirstSeenPlayerTime >= 0f ? bot.FirstSeenPlayerTime : bot.SpawnTime;
+            bool lineOfSightMode = ActiveMode == TrainingMode.Duel || ActiveMode == TrainingMode.Prefire;
+            // 对枪和预瞄从假人第一次看到你开始计时；假人没看到你就被击杀时不计入平均耗时（记为 -1）。
+            float timeToKill = lineOfSightMode
+                ? (bot.FirstSeenPlayerTime >= 0f ? Time.time - bot.FirstSeenPlayerTime : -1f)
+                : Time.time - bot.SpawnTime;
             bool oneTap = result.Zone == HitZone.Head && result.Dealt >= bot.Health.Max - 0.01f;
-            stats.RecordKill(Time.time - start, oneTap);
+            stats.RecordKill(timeToKill, oneTap);
             occupiedPoints.Remove(bot);
 
-            switch (Settings.mode)
+            switch (ActiveMode)
             {
                 case TrainingMode.Flick:
                     respawnQueue.Add(Elapsed + FlickRespawnDelay);
@@ -560,8 +629,8 @@ namespace AimTrainer.Game
             messageUntil = Time.unscaledTime + seconds;
         }
 
-        string RecordKey() => BestRecords.Key(SceneManager.GetActiveScene().name, Settings.mode, Settings.difficulty,
-            Settings.botCount, Settings.durationSeconds);
+        string RecordKey() => BestRecords.Key(SceneManager.GetActiveScene().name, ActiveMode, activeDifficulty,
+            activeBotCount, ActiveDuration);
 
         T FindInScene<T>() where T : Component
         {
